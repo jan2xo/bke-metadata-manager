@@ -19,6 +19,14 @@ This branch is an initial implementation foundation, not a release-ready metadat
 
 Initialize a local catalog in application code with SqliteCatalog(path).InitializeAsync(). Read metadata with ExifToolMetadataReader().ReadAsync(path).
 
+## Tests
+
+Run the current unit tests with:
+
+    dotnet test Bke.MetadataManager.sln
+
+The tests cover filename generation/sanitization, collision refusal, SHA-256 equality across differently named identical files, and duplicate classifications. They have been authored but have not yet been executed in this environment.
+
 ## Repository map
 - src/Bke.MetadataManager: Avalonia shell and core services
 - tests: automated tests
@@ -26,4 +34,4 @@ Initialize a local catalog in application code with SqliteCatalog(path).Initiali
 - docs/SAFETY.md: safety invariants and commit protocol
 
 ## MVP limitations
-Drag-and-drop, thumbnail rendering, full asset catalog UI, editing UI, commit engine, revision browsing, rollback, automated tests, and packaging are not yet implemented. The metadata adapter is read-only. Whole-file SHA-256 is immutable import provenance and must not be treated as a stable fingerprint after embedded metadata changes.
+Drag-and-drop, thumbnail rendering, full asset catalog UI, editing UI, commit engine, revision browsing, rollback, complete integration tests and packaging are not yet implemented. The metadata adapter is read-only. Whole-file SHA-256 is immutable import provenance and must not be treated as a stable fingerprint after embedded metadata changes.
