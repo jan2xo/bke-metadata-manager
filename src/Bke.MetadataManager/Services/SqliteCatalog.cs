@@ -163,7 +163,7 @@ public sealed class SqliteCatalog(string databasePath)
                 fingerprint.Transaction = (SqliteTransaction)transaction;
                 fingerprint.CommandText = """
                     INSERT OR IGNORE INTO AssetFingerprints(AssetId,Algorithm,Fingerprint,IsImmutableOriginal,CreatedAtUtc)
-                    VALUES($id,'SHA-256',$hash,1,$now);
+                    SELECT $id,'SHA-256',$hash,CASE WHEN EXISTS(SELECT 1 FROM AssetFingerprints WHERE AssetId=$id AND IsImmutableOriginal=1) THEN 0 ELSE 1 END,$now;
                     """;
                 fingerprint.Parameters.AddWithValue("$id", assetId);
                 fingerprint.Parameters.AddWithValue("$hash", incoming.Sha256);
@@ -219,7 +219,7 @@ public sealed class SqliteCatalog(string databasePath)
         await using var connection = new SqliteConnection(ConnectionString);
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT DISTINCT AssetId FROM AssetFingerprints WHERE Algorithm='SHA-256' AND Fingerprint=$hash;";
+        command.CommandText = "SELECT DISTINCT AssetId FROM AssetFingerprints WHERE Algorithm='SHA-256' AND Fingerprint=$hash AND IsImmutableOriginal=1;";
         command.Parameters.AddWithValue("$hash", sha256);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken)) ids.Add(reader.GetString(0));
