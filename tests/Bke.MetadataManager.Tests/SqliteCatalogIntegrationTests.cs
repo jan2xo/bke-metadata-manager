@@ -37,6 +37,16 @@ public sealed class SqliteCatalogIntegrationTests
             Assert.Equal("original-name.bin", loaded.OriginalFilename);
             Assert.Equal(originalHash, loaded.Sha256);
             Assert.Equal(originalBytes, await File.ReadAllBytesAsync(source));
+
+            await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = database }.ToString());
+            await connection.OpenAsync();
+            await using var counts = connection.CreateCommand();
+            counts.CommandText = "SELECT (SELECT COUNT(*) FROM Assets), (SELECT COUNT(*) FROM AssetFingerprints), (SELECT COUNT(*) FROM OperationJournal WHERE State='Completed');";
+            await using var reader = await counts.ExecuteReaderAsync();
+            Assert.True(await reader.ReadAsync());
+            Assert.Equal(1L, reader.GetInt64(0));
+            Assert.Equal(1L, reader.GetInt64(1));
+            Assert.Equal(1L, reader.GetInt64(2));
         }
         finally { Directory.Delete(root, true); }
     }
@@ -67,6 +77,11 @@ public sealed class SqliteCatalogIntegrationTests
             Assert.Equal(bytes, await File.ReadAllBytesAsync(secondPath));
             Assert.Equal(firstHash, await new FileFingerprintService().ComputeSha256Async(firstPath));
             Assert.Equal(secondHash, await new FileFingerprintService().ComputeSha256Async(secondPath));
+
+            var reopened = new MainWindowViewModel(database);
+            await reopened.InitializeAsync();
+            Assert.Equal(2, reopened.Assets.Count);
+            Assert.All(reopened.Assets, asset => Assert.Equal("Duplicate content", asset.Status));
         }
         finally { Directory.Delete(root, true); }
     }
