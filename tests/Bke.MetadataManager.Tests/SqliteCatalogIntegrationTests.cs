@@ -38,7 +38,7 @@ public sealed class SqliteCatalogIntegrationTests
             Assert.Equal(originalHash, loaded.Sha256);
             Assert.Equal(originalBytes, await File.ReadAllBytesAsync(source));
 
-            await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = database }.ToString());
+            await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = database, Pooling = false }.ToString());
             await connection.OpenAsync();
             await using var counts = connection.CreateCommand();
             counts.CommandText = "SELECT (SELECT COUNT(*) FROM Assets), (SELECT COUNT(*) FROM AssetFingerprints), (SELECT COUNT(*) FROM OperationJournal WHERE State='Completed');";
@@ -96,7 +96,7 @@ public sealed class SqliteCatalogIntegrationTests
         {
             var catalog = new SqliteCatalog(database);
             await catalog.InitializeAsync();
-            await using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = database }.ToString()))
+            await using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = database, Pooling = false }.ToString()))
             {
                 await connection.OpenAsync();
                 await using var insert = connection.CreateCommand();
@@ -109,7 +109,7 @@ public sealed class SqliteCatalogIntegrationTests
             }
 
             await catalog.RecoverAsync();
-            await using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = database }.ToString()))
+            await using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = database, Pooling = false }.ToString()))
             {
                 await connection.OpenAsync();
                 await using var query = connection.CreateCommand();
