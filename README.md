@@ -34,9 +34,11 @@ A GitHub Actions workflow runs restore, Release build, and tests on feature bran
 - `tests`: unit and SQLite integration tests
 - `docs/ARCHITECTURE.md`: layers, recovery behavior, duplicate semantics, and limits
 - `docs/SAFETY.md`: read-only boundary and future commit protocol
+- `docs/IDENTITY-MIGRATION.md`: staged migration from path-derived IDs to immutable catalog-generated IDs
 
 ## Known limitations
 - ExifTool is an external dependency and must be installed separately to display tags.
 - Stable asset IDs are derived from normalized full paths; moving a file manually creates a new path identity until move tracking is implemented.
+- The macOS Apple Silicon workflow exercises generated JPEG, PNG, HEIC, MP4, and MOV fixtures with ExifTool and captures desktop startup evidence. It does not replace manual Finder drag-and-drop and visual UI certification.
 - Thumbnails, advanced duplicate review, revision browsing, packaging, and all metadata write/rename workflows remain out of scope.
 - Build/test success is reported from the actual latest CI run; do not infer it from the presence of this workflow.
