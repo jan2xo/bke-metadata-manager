@@ -1,11 +1,29 @@
 # BKE Metadata Manager
 
-Lightweight, offline-first desktop tooling for safe batch media metadata management.
+Offline-first desktop application for batch media metadata management, standardized naming, duplicate prevention, and reversible edits.
 
-## MVP target
+**Target:** MVP v0.1.0  
+**Stack:** .NET 10, Avalonia UI, SQLite, ExifTool, SHA-256.
 
-Version: `0.1.0`
+## Safety status
+This branch is an initial implementation foundation, not a release-ready metadata editor. It does not transcode media. Metadata editing and filesystem renaming are intentionally not enabled until snapshot-first commit, verification, and rollback are implemented.
 
-The application must never transcode or recompress media, must preserve original metadata before edits, must not overwrite existing files, and must make committed metadata changes recoverable.
+## Requirements
+- .NET 10 SDK
+- ExifTool installed locally for metadata reading (optional for build and launch)
 
-Implementation follows the project brief in the initial architecture and safety documentation.
+## Build and run
+    dotnet restore src/Bke.MetadataManager/Bke.MetadataManager.csproj
+    dotnet build src/Bke.MetadataManager/Bke.MetadataManager.csproj
+    dotnet run --project src/Bke.MetadataManager/Bke.MetadataManager.csproj
+
+Initialize a local catalog in application code with SqliteCatalog(path).InitializeAsync(). Read metadata with ExifToolMetadataReader().ReadAsync(path).
+
+## Repository map
+- src/Bke.MetadataManager: Avalonia shell and core services
+- tests: automated tests
+- docs/ARCHITECTURE.md: layer boundaries and duplicate semantics
+- docs/SAFETY.md: safety invariants and commit protocol
+
+## MVP limitations
+Drag-and-drop, thumbnail rendering, full asset catalog UI, editing UI, commit engine, revision browsing, rollback, automated tests, and packaging are not yet implemented. The metadata adapter is read-only. Whole-file SHA-256 is immutable import provenance and must not be treated as a stable fingerprint after embedded metadata changes.
