@@ -1,0 +1,112 @@
+name: Windows x64 runtime certification
+
+on:
+  push:
+    branches: ["feat/mvp-v0.1.0"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-runtime:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Install real media inspection tools
+        run: |
+          choco install exiftool --version=13.59.0 -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw "ExifTool installation failed." }
+          choco install ffmpeg -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw "FFmpeg installation failed." }
+          $exiftool = (Get-Command exiftool -ErrorAction Stop).Source
+          "EXIFTOOL_PATH=$exiftool" >> $env:GITHUB_ENV
+          exiftool -ver
+          ffmpeg -version | Select-Object -First 1
+          dotnet --info
+      - name: Restore and build on Windows
+        run: |
+          dotnet restore Bke.MetadataManager.sln
+          if ($LASTEXITCODE -ne 0) { throw "Restore failed." }
+          dotnet build Bke.MetadataManager.sln --no-restore --configuration Release
+          if ($LASTEXITCODE -ne 0) { throw "Build failed." }
+      - name: Generate Windows media fixtures
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dir = Join-Path $env:RUNNER_TEMP "bke-media-fixtures"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          ffmpeg -hide_banner -loglevel error -y -f lavfi -i "color=c=black:s=32x32:d=0.2" -frames:v 1 -update 1 (Join-Path $dir "sample.png")
+          if ($LASTEXITCODE -ne 0) { throw "PNG fixture failed." }
+          ffmpeg -hide_banner -loglevel error -y -i (Join-Path $dir "sample.png") -frames:v 1 -update 1 (Join-Path $dir "sample.jpg")
+          if ($LASTEXITCODE -ne 0) { throw "JPEG fixture failed." }
+          foreach ($ext in @("mp4", "mov")) {
+            ffmpeg -hide_banner -loglevel error -y -f lavfi -i "color=c=black:s=32x32:d=0.2" -frames:v 2 -c:v libx264 -pix_fmt yuv420p -metadata "title=BKE Runtime Fixture" (Join-Path $dir "sample.$ext")
+            if ($LASTEXITCODE -ne 0) { throw "$ext fixture failed." }
+          }
+          exiftool -overwrite_original "-DateTimeOriginal=2024:01:02 03:04:05" "-Artist=BKE Runtime Test" "-ImageDescription=Read-only metadata fixture" "-Copyright=BKE test only" "-Keywords=runtime,test" (Join-Path $dir "sample.jpg")
+          if ($LASTEXITCODE -ne 0) { throw "JPEG metadata fixture failed." }
+          Get-ChildItem $dir | Select-Object Name,Length
+      - name: Run unit, catalog, and actual ExifTool integration tests
+        env:
+          BKE_MEDIA_FIXTURE_DIR: ${{ runner.temp }}/bke-media-fixtures
+          BKE_MEDIA_FIXTURE_EXTENSIONS: jpg,png,mp4,mov
+        run: |
+          dotnet test Bke.MetadataManager.sln --no-restore --configuration Release --logger "console;verbosity=normal"
+          if ($LASTEXITCODE -ne 0) { throw "Windows tests failed." }
+      - name: Launch Windows desktop executable (process smoke test)
+        run: |
+          $ErrorActionPreference = "Stop"
+          $app = Join-Path $env:GITHUB_WORKSPACE "src/Bke.MetadataManager/bin/Release/net10.0/Bke.MetadataManager.exe"
+          if (-not (Test-Path $app)) { throw "Windows desktop executable missing: $app" }
+          $stdout = Join-Path $env:RUNNER_TEMP "bke-windows-app.log"
+          $stderr = Join-Path $env:RUNNER_TEMP "bke-windows-app-error.log"
+          $proc = Start-Process -FilePath $app -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          try {
+            Start-Sleep -Seconds 10
+            $proc.Refresh()
+            if ($proc.HasExited) {
+              Get-Content $stdout -ErrorAction SilentlyContinue
+              Get-Content $stderr -ErrorAction SilentlyContinue
+              throw "Desktop executable exited during Windows startup smoke test."
+            }
+            Write-Output "Windows process stayed running; MainWindowHandle=$($proc.MainWindowHandle)"
+          }
+          finally {
+            if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+          }
+      - name: Produce Windows x64 smoke-test build
+        run: |
+          dotnet publish src/Bke.MetadataManager/Bke.MetadataManager.csproj --configuration Release --runtime win-x64 --self-contained true --output (Join-Path $env:RUNNER_TEMP "bke-win-x64")
+          if ($LASTEXITCODE -ne 0) { throw "Windows x64 publish failed." }
+          if (-not (Test-Path (Join-Path $env:RUNNER_TEMP "bke-win-x64/Bke.MetadataManager.exe"))) {
+            throw "Published Windows executable missing."
+          }
+      - name: Upload Windows runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-runtime-evidence
+          path: |
+            ${{ runner.temp }}/bke-windows-app.log
+            ${{ runner.temp }}/bke-windows-app-error.log
+            ${{ runner.temp }}/bke-media-fixtures
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload test-only Windows build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bke-metadata-manager-win-x64-uncertified
+          path: ${{ runner.temp }}/bke-win-x64
+          if-no-files-found: error
+          retention-days: 7

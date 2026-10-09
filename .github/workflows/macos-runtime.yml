@@ -1,0 +1,104 @@
+name: macOS Apple Silicon runtime certification
+
+on:
+  push:
+    branches: ["feat/mvp-v0.1.0"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos-runtime:
+    # macos-15 is an Apple Silicon M1 hosted runner for public repositories.
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Install ExifTool and FFmpeg
+        run: brew install exiftool ffmpeg
+      - name: Record runtime platform
+        run: |
+          uname -a
+          uname -m
+          sw_vers
+          dotnet --info
+          exiftool -ver
+          ffmpeg -version | head -n 2
+          test "$(uname -m)" = "arm64"
+      - name: Restore and build
+        run: |
+          dotnet restore Bke.MetadataManager.sln
+          dotnet build Bke.MetadataManager.sln --no-restore --configuration Release
+      - name: Generate disposable representative media fixtures
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bke-media-fixtures"
+          FIX="$RUNNER_TEMP/bke-media-fixtures"
+          ffmpeg -hide_banner -loglevel error -f lavfi -i color=c=black:s=32x32:d=0.1 -frames:v 1 -update 1 "$FIX/source.png"
+          sips -s format jpeg "$FIX/source.png" --out "$FIX/sample.jpg" >/dev/null
+          cp "$FIX/source.png" "$FIX/sample.png"
+          sips -s format heic "$FIX/sample.jpg" --out "$FIX/sample.heic" >/dev/null
+          ffmpeg -hide_banner -loglevel error -f lavfi -i color=c=black:s=32x32:d=0.2 -frames:v 2 -c:v libx264 -pix_fmt yuv420p -metadata title='BKE Runtime Fixture' "$FIX/sample.mp4"
+          ffmpeg -hide_banner -loglevel error -f lavfi -i color=c=black:s=32x32:d=0.2 -frames:v 2 -c:v libx264 -pix_fmt yuv420p -metadata title='BKE Runtime Fixture' "$FIX/sample.mov"
+          exiftool -overwrite_original -DateTimeOriginal='2024:01:02 03:04:05' -Artist='BKE Runtime Test' -ImageDescription='Read-only metadata fixture' -Copyright='BKE test only' -Keywords='runtime,test' "$FIX/sample.jpg"
+          exiftool -overwrite_original -Title='BKE Runtime Fixture' "$FIX/sample.png" "$FIX/sample.heic"
+          printf '%s' 'not a JPEG' > "$FIX/malformed.jpg"
+          exiftool -ver
+          ls -l "$FIX"
+      - name: Run unit and real ExifTool integration tests
+        env:
+          EXIFTOOL_PATH: /opt/homebrew/bin/exiftool
+          BKE_MEDIA_FIXTURE_DIR: ${{ runner.temp }}/bke-media-fixtures
+        run: dotnet test Bke.MetadataManager.sln --no-restore --configuration Release --logger "console;verbosity=normal"
+      - name: Launch desktop application smoke test
+        run: |
+          set -euo pipefail
+          APP="$GITHUB_WORKSPACE/src/Bke.MetadataManager/bin/Release/net10.0/Bke.MetadataManager"
+          test -x "$APP"
+          "$APP" > "$RUNNER_TEMP/bke-app.log" 2>&1 &
+          APP_PID=$!
+          cleanup() { kill "$APP_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 20); do
+            if ! kill -0 "$APP_PID" 2>/dev/null; then
+              cat "$RUNNER_TEMP/bke-app.log"
+              echo "Application exited before startup smoke test completed." >&2
+              exit 1
+            fi
+            sleep 1
+          done
+          ps -p "$APP_PID" -o pid=,comm=
+          screencapture -x "$RUNNER_TEMP/bke-desktop.png" || true
+          cat "$RUNNER_TEMP/bke-app.log"
+      - name: Publish self-contained macOS ARM64 test build
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/bke-osx-arm64"
+          dotnet publish src/Bke.MetadataManager/Bke.MetadataManager.csproj --configuration Release --runtime osx-arm64 --self-contained true --output "$OUT"
+          test -x "$OUT/Bke.MetadataManager"
+      - name: Upload self-contained macOS ARM64 test build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bke-metadata-manager-osx-arm64-uncertified
+          path: ${{ runner.temp }}/bke-osx-arm64
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload desktop smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64-runtime-evidence
+          path: |
+            ${{ runner.temp }}/bke-app.log
+            ${{ runner.temp }}/bke-desktop.png
+            ${{ runner.temp }}/bke-media-fixtures
+          if-no-files-found: warn
+          retention-days: 7

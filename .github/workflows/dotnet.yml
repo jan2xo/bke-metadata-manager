@@ -1,0 +1,28 @@
+name: .NET verification
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore Bke.MetadataManager.sln
+      - name: Build
+        run: dotnet build Bke.MetadataManager.sln --no-restore --configuration Release
+      - name: Test
+        run: dotnet test Bke.MetadataManager.sln --no-build --configuration Release --logger "console;verbosity=normal"
