@@ -57,6 +57,42 @@ public sealed class ExifToolRuntimeTests
         Assert.Equal("Read-only metadata fixture", viewModel.Description);
         Assert.Contains("runtime", viewModel.Keywords, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("BKE test only", viewModel.Copyright);
+
+        // Exercise the real media files through import, metadata reading, restart, and reimport.
+        var mediaPaths = new[] { "jpg", "png", "heic", "mp4", "mov" }
+            .Select(extension => Path.Combine(fixtureDirectory, $"sample.{extension}"))
+            .ToArray();
+        var fingerprints = new FileFingerprintService();
+        var before = new Dictionary<string, string>();
+        foreach (var path in mediaPaths)
+            before[path] = await fingerprints.ComputeSha256Async(path);
+
+        var catalogRoot = NewTempDirectory();
+        try
+        {
+            var duplicateCopy = Path.Combine(catalogRoot, "same-bytes-different-name.jpg");
+            File.Copy(Path.Combine(fixtureDirectory, "sample.jpg"), duplicateCopy);
+            var database = Path.Combine(catalogRoot, "catalog.db");
+            var catalogVm = new MainWindowViewModel(database, exifToolPath);
+            await catalogVm.ImportPathsAsync(mediaPaths.Append(duplicateCopy));
+            Assert.Equal(6, catalogVm.Assets.Count);
+            Assert.Contains(catalogVm.Assets, asset => asset.FileName == "same-bytes-different-name.jpg" && asset.Status.Contains("Duplicate", StringComparison.OrdinalIgnoreCase));
+
+            foreach (var asset in catalogVm.Assets)
+                await catalogVm.ReadMetadataAsync(asset);
+
+            var reopened = new MainWindowViewModel(database, exifToolPath);
+            await reopened.InitializeAsync();
+            Assert.Equal(6, reopened.Assets.Count);
+            await reopened.ImportPathsAsync(mediaPaths.Append(duplicateCopy));
+            Assert.Equal(6, reopened.Assets.Count);
+
+            foreach (var path in mediaPaths)
+                Assert.Equal(before[path], await fingerprints.ComputeSha256Async(path));
+            Assert.Equal(before[Path.Combine(fixtureDirectory, "sample.jpg")],
+                await fingerprints.ComputeSha256Async(duplicateCopy));
+        }
+        finally { Directory.Delete(catalogRoot, true); }
     }
 
     [Fact]
