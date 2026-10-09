@@ -43,7 +43,7 @@
           </StackPanel>
         </Border>
         <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap"/>
-        <ProgressBar Minimum="0" Maximum="100" Value="{Binding ImportProgress}" IsIndeterminate="{Binding IsImporting}" Height="8"/>
+        <ProgressBar Minimum="0" Maximum="100" Value="{Binding ImportProgress}" IsIndeterminate="False" Height="8"/>
         <TextBlock Text="{Binding ProgressMessage}" FontSize="11" Foreground="#65788A" TextWrapping="Wrap"/>
         <TextBlock Text="ASSETS" FontWeight="Bold" Foreground="#506174"/>
         <ListBox ItemsSource="{Binding Assets}" SelectedItem="{Binding SelectedAsset}" SelectionChanged="Assets_SelectionChanged" MinHeight="170" MaxHeight="300">
