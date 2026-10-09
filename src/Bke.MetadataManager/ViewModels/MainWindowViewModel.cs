@@ -219,6 +219,8 @@ public sealed class MainWindowViewModel : ObservableObject
         _ => value.ToString()
     };
 
+    public void ReportUiError(string message) => ReportError("Application", message);
+
     private void ReportError(string path, string message)
     {
         Errors.Add($"{path}: {message}");
