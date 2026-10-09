@@ -16,21 +16,34 @@
     <ScrollViewer Grid.Row="1" Grid.Column="1">
       <StackPanel Margin="28" Spacing="18">
         <TextBlock Text="Import and inspect assets" FontSize="26" FontWeight="SemiBold"/>
-        <Border BorderBrush="#91A5B8" BorderThickness="2" CornerRadius="10" Padding="28" Background="#F8FAFC">
+        <Border BorderBrush="#91A5B8" BorderThickness="2" CornerRadius="10" Padding="24" Background="#F8FAFC">
           <StackPanel Spacing="10" HorizontalAlignment="Center">
-            <TextBlock Text="Drop media files or folders here" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-            <TextBlock Text="Recursive folder scanning and import queue are next integration steps." TextWrapping="Wrap" HorizontalAlignment="Center"/>
-            <Button Content="Choose files…" HorizontalAlignment="Center" IsEnabled="False"/>
+            <TextBlock Text="Import files or recursively scan folders" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+            <TextBlock Text="Files are read-only fingerprinted with SHA-256. Media bytes are never modified." TextWrapping="Wrap" HorizontalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+              <Button Content="Choose files…" Click="ChooseFiles_Click"/><Button Content="Choose folders…" Click="ChooseFolders_Click"/>
+            </StackPanel>
           </StackPanel>
         </Border>
-        <TextBlock Text="MVP foundation" FontSize="18" FontWeight="SemiBold"/>
-        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="12">
-          <Border Grid.Row="0" Grid.Column="0" BorderBrush="#D5DEE7" BorderThickness="1" CornerRadius="8" Padding="16"><StackPanel Spacing="6"><TextBlock Text="SHA-256 identity" FontWeight="Bold"/><TextBlock Text="Deterministic full-file fingerprinting; filename-independent duplicate checks." TextWrapping="Wrap"/></StackPanel></Border>
-          <Border Grid.Row="0" Grid.Column="1" BorderBrush="#D5DEE7" BorderThickness="1" CornerRadius="8" Padding="16"><StackPanel Spacing="6"><TextBlock Text="Safe naming" FontWeight="Bold"/><TextBlock Text="Sanitized names, sequence formatting, and no-overwrite collision checks." TextWrapping="Wrap"/></StackPanel></Border>
-          <Border Grid.Row="1" Grid.Column="0" BorderBrush="#D5DEE7" BorderThickness="1" CornerRadius="8" Padding="16"><StackPanel Spacing="6"><TextBlock Text="Metadata reader" FontWeight="Bold"/><TextBlock Text="Offline ExifTool JSON reader; writes intentionally not enabled yet." TextWrapping="Wrap"/></StackPanel></Border>
-          <Border Grid.Row="1" Grid.Column="1" BorderBrush="#D5DEE7" BorderThickness="1" CornerRadius="8" Padding="16"><StackPanel Spacing="6"><TextBlock Text="SQLite journal" FontWeight="Bold"/><TextBlock Text="Catalog schema for original fingerprints, snapshots, revisions, and operations." TextWrapping="Wrap"/></StackPanel></Border>
+        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap"/>
+        <Grid ColumnDefinitions="2*,*,*,*" Background="#E8EEF4" ColumnSpacing="8">
+          <TextBlock Grid.Column="0" Text="Filename / path" FontWeight="Bold" Margin="8"/><TextBlock Grid.Column="1" Text="Size" FontWeight="Bold" Margin="8"/>
+          <TextBlock Grid.Column="2" Text="SHA-256" FontWeight="Bold" Margin="8"/><TextBlock Grid.Column="3" Text="Status" FontWeight="Bold" Margin="8"/>
         </Grid>
-        <TextBlock Text="Early scaffold, not yet a release-ready metadata editor. Embedded writes remain disabled until backup, commit, verification, and rollback are implemented and tested." TextWrapping="Wrap" Foreground="#8A4B12"/>
+        <ItemsControl ItemsSource="{Binding Assets}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border BorderBrush="#D5DEE7" BorderThickness="0,0,0,1" Padding="8">
+                <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="8">
+                  <StackPanel Grid.Column="0" Spacing="3"><TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding Path}" FontSize="11" Foreground="#65788A" TextWrapping="Wrap"/></StackPanel>
+                  <TextBlock Grid.Column="1" Text="{Binding SizeDisplay}" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Sha256}" FontSize="10" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="3" Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="Metadata editing, rename commits, and rollback remain disabled until the recoverable commit engine is implemented." TextWrapping="Wrap" Foreground="#8A4B12"/>
       </StackPanel>
     </ScrollViewer>
   </Grid>
