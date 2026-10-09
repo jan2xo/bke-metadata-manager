@@ -41,14 +41,14 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/bke-media-fixtures"
           FIX="$RUNNER_TEMP/bke-media-fixtures"
-          printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=' | base64 -D > "$FIX/source.png"
+          ffmpeg -hide_banner -loglevel error -f lavfi -i color=c=black:s=32x32:d=0.1 -frames:v 1 -update 1 "$FIX/source.png"
           sips -s format jpeg "$FIX/source.png" --out "$FIX/sample.jpg" >/dev/null
           cp "$FIX/source.png" "$FIX/sample.png"
           sips -s format heic "$FIX/sample.jpg" --out "$FIX/sample.heic" >/dev/null
           ffmpeg -hide_banner -loglevel error -f lavfi -i color=c=black:s=32x32:d=0.2 -frames:v 2 -c:v libx264 -pix_fmt yuv420p -metadata title='BKE Runtime Fixture' "$FIX/sample.mp4"
           ffmpeg -hide_banner -loglevel error -f lavfi -i color=c=black:s=32x32:d=0.2 -frames:v 2 -c:v libx264 -pix_fmt yuv420p -metadata title='BKE Runtime Fixture' "$FIX/sample.mov"
           exiftool -overwrite_original -DateTimeOriginal='2024:01:02 03:04:05' -Artist='BKE Runtime Test' -ImageDescription='Read-only metadata fixture' -Copyright='BKE test only' -Keywords='runtime,test' "$FIX/sample.jpg"
-          exiftool -overwrite_original -Title='BKE Runtime Fixture' "$FIX/sample.png" "$FIX/sample.heic" "$FIX/sample.mp4" "$FIX/sample.mov"
+          exiftool -overwrite_original -Title='BKE Runtime Fixture' "$FIX/sample.png" "$FIX/sample.heic"
           printf '%s' 'not a JPEG' > "$FIX/malformed.jpg"
           exiftool -ver
           ls -l "$FIX"
