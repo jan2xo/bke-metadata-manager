@@ -45,6 +45,18 @@ public sealed class ExifToolRuntimeTests
                 property.Name.EndsWith(":FileType", StringComparison.OrdinalIgnoreCase) ||
                 property.Name.Equals("FileType", StringComparison.OrdinalIgnoreCase));
         }
+
+        var jpeg = Path.Combine(fixtureDirectory, "sample.jpg");
+        var viewModel = new MainWindowViewModel(
+            Path.Combine(Path.GetTempPath(), $"bke-metadata-test-{Guid.NewGuid():N}.db"),
+            exifToolPath);
+        await viewModel.ReadMetadataAsync(new Bke.MetadataManager.Models.ImportedAsset(
+            jpeg, Path.GetFileName(jpeg), new FileInfo(jpeg).Length, "Ready"));
+        Assert.Equal("2024:01:02 03:04:05", viewModel.CaptureTimestamp);
+        Assert.Equal("BKE Runtime Test", viewModel.Creator);
+        Assert.Equal("Read-only metadata fixture", viewModel.Description);
+        Assert.Contains("runtime", viewModel.Keywords, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("BKE test only", viewModel.Copyright);
     }
 
     [Fact]
