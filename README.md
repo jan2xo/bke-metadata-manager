@@ -36,6 +36,22 @@ A GitHub Actions workflow runs restore, Release build, and tests on feature bran
 - `docs/SAFETY.md`: read-only boundary and future commit protocol
 - `docs/IDENTITY-MIGRATION.md`: staged migration from path-derived IDs to immutable catalog-generated IDs
 
+## Supported desktop targets and certification gates
+BKE Metadata Manager targets **macOS Apple Silicon** and **Windows 10/11 x64**.
+Avalonia/.NET support is not a substitute for native operating-system validation.
+
+| OS | Automated gate | Real desktop interaction |
+|---|---|---|
+| macOS arm64 | `.github/workflows/macos-runtime.yml`: build, tests, real JPEG/PNG/HEIC/MP4/MOV ExifTool reads, process launch | Finder drop, window rendering, dialogs and metadata viewing still need a person |
+| Windows x64 | `.github/workflows/windows-runtime.yml`: build, tests, real JPEG/PNG/MP4/MOV ExifTool reads, process launch and test-only self-contained publish | File Explorer drop, dialogs, viewing and Windows HEIC (where supported) still need a person |
+| Linux | `.github/workflows/dotnet.yml`: restore, build, tests | Not an MVP desktop release target |
+
+The Windows workflow provides an **uncertified test build**, not a customer-ready installer. It does not bundle ExifTool or certify Finder/File Explorer interaction. Do not call the desktop MVP certified until actual user-interface checks pass on *both* macOS and Windows.
+
+For Windows development, install the .NET 10 SDK and ExifTool (for example `choco install exiftool -y`), then run the build and launch commands above in PowerShell. The Windows test-only self-contained publish does not require the .NET SDK on the staff computer, but ExifTool must still be installed or configured through `EXIFTOOL_PATH` to display embedded metadata.
+
+**Windows acceptance checklist:** launch the executable; drag one photo, multiple photos, and nested folders from File Explorer; use Windows file/folder pickers; inspect metadata using ExifTool, including Windows HEIC samples if applicable; restart and verify the catalog; reimport and confirm duplicates; verify unchanged SHA-256 hashes; validate filenames with spaces, Unicode, and case differences. Confirm that no source file is modified.
+
 ## Known limitations
 - ExifTool is an external dependency and must be installed separately to display tags.
 - Stable asset IDs are derived from normalized full paths; moving a file manually creates a new path identity until move tracking is implemented.
