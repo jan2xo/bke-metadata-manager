@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType><TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
-    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault><Version>0.1.0</Version>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault><Version>0.1.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.0" />
