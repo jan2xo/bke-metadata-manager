@@ -44,10 +44,10 @@ public partial class MainWindow : Window
     private async void DropZone_Drop(object? sender, DragEventArgs e)
     {
         if (!e.Data.Contains(DataFormats.Files)) return;
-        var paths = e.Data.GetFiles()
-            .Select(item => item.Path.LocalPath)
+        var droppedItems = e.Data.GetFiles();
+        var paths = droppedItems?.Select(item => item.Path.LocalPath)
             .Where(path => !string.IsNullOrWhiteSpace(path))
-            .Select(path => path!);
+            .Select(path => path!) ?? Enumerable.Empty<string>();
         await _viewModel.ImportPathsAsync(paths);
         e.Handled = true;
     }
