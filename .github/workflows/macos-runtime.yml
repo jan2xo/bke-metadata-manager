@@ -77,6 +77,20 @@ jobs:
           ps -p "$APP_PID" -o pid=,comm=
           screencapture -x "$RUNNER_TEMP/bke-desktop.png" || true
           cat "$RUNNER_TEMP/bke-app.log"
+      - name: Publish self-contained macOS ARM64 test build
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/bke-osx-arm64"
+          dotnet publish src/Bke.MetadataManager/Bke.MetadataManager.csproj --configuration Release --runtime osx-arm64 --self-contained true --output "$OUT"
+          test -x "$OUT/Bke.MetadataManager"
+      - name: Upload self-contained macOS ARM64 test build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bke-metadata-manager-osx-arm64-uncertified
+          path: ${{ runner.temp }}/bke-osx-arm64
+          if-no-files-found: error
+          retention-days: 7
       - name: Upload desktop smoke evidence
         if: always()
         uses: actions/upload-artifact@v4
