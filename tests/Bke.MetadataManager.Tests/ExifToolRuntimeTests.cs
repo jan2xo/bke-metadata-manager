@@ -75,7 +75,8 @@ public sealed class ExifToolRuntimeTests
             var database = Path.Combine(catalogRoot, "catalog.db");
             var catalogVm = new MainWindowViewModel(database, exifToolPath);
             await catalogVm.ImportPathsAsync(mediaPaths.Append(duplicateCopy));
-            Assert.Equal(6, catalogVm.Assets.Count);
+            var expectedAssetCount = mediaPaths.Length + 1;
+            Assert.Equal(expectedAssetCount, catalogVm.Assets.Count);
             Assert.Contains(catalogVm.Assets, asset => asset.FileName == "same-bytes-different-name.jpg" && asset.Status.Contains("Duplicate", StringComparison.OrdinalIgnoreCase));
 
             foreach (var asset in catalogVm.Assets)
@@ -83,9 +84,9 @@ public sealed class ExifToolRuntimeTests
 
             var reopened = new MainWindowViewModel(database, exifToolPath);
             await reopened.InitializeAsync();
-            Assert.Equal(6, reopened.Assets.Count);
+            Assert.Equal(expectedAssetCount, reopened.Assets.Count);
             await reopened.ImportPathsAsync(mediaPaths.Append(duplicateCopy));
-            Assert.Equal(6, reopened.Assets.Count);
+            Assert.Equal(expectedAssetCount, reopened.Assets.Count);
 
             foreach (var path in mediaPaths)
                 Assert.Equal(before[path], await fingerprints.ComputeSha256Async(path));
