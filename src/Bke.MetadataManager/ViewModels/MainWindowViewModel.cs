@@ -1,15 +1,17 @@
 using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using Bke.MetadataManager.Models;
 using Bke.MetadataManager.Services;
 
 namespace Bke.MetadataManager.ViewModels;
 
-public sealed class MainWindowViewModel
+public sealed class MainWindowViewModel : ObservableObject
 {
     private readonly FileFingerprintService _fingerprints = new();
     private readonly HashSet<string> _knownPaths = new(StringComparer.OrdinalIgnoreCase);
+    private string _statusMessage = "Ready. Import media to begin.";
     public ObservableCollection<ImportedAsset> Assets { get; } = new();
-    public string StatusMessage { get; private set; } = "Ready. Import media to begin.";
+    public string StatusMessage { get => _statusMessage; private set => SetProperty(ref _statusMessage, value); }
 
     public async Task ImportPathsAsync(IEnumerable<string> paths, CancellationToken cancellationToken = default)
     {
@@ -41,10 +43,11 @@ public sealed class MainWindowViewModel
             cancellationToken.ThrowIfCancellationRequested();
             var fullPath = Path.GetFullPath(candidate);
             if (!_knownPaths.Add(fullPath)) continue;
+            ImportedAsset? asset = null;
             try
             {
                 var info = new FileInfo(fullPath);
-                var asset = new ImportedAsset(fullPath, info.Name, info.Length, "Hashing…");
+                asset = new ImportedAsset(fullPath, info.Name, info.Length, "Hashing…");
                 Assets.Add(asset);
                 var hash = await _fingerprints.ComputeSha256Async(fullPath, cancellationToken);
                 var index = Assets.IndexOf(asset);
@@ -53,7 +56,7 @@ public sealed class MainWindowViewModel
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                var index = Assets.ToList().FindIndex(x => StringComparer.OrdinalIgnoreCase.Equals(x.Path, fullPath));
+                var index = asset is null ? -1 : Assets.IndexOf(asset);
                 var failed = new ImportedAsset(fullPath, Path.GetFileName(fullPath), 0, $"Import failed: {ex.Message}");
                 if (index >= 0) Assets[index] = failed; else Assets.Add(failed);
             }
