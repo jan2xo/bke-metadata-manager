@@ -34,4 +34,4 @@ The tests cover filename generation/sanitization, collision refusal, SHA-256 equ
 - docs/SAFETY.md: safety invariants and commit protocol
 
 ## MVP limitations
-Drag-and-drop, thumbnail rendering, full asset catalog UI, editing UI, commit engine, revision browsing, rollback, complete integration tests and packaging are not yet implemented. The metadata adapter is read-only. Whole-file SHA-256 is immutable import provenance and must not be treated as a stable fingerprint after embedded metadata changes.
+Drag-and-drop, thumbnail rendering, persistent asset catalog integration, metadata editing UI, commit engine, revision browsing, rollback, complete integration tests, and packaging are not yet implemented. A basic file/folder picker import queue with recursive SHA-256 scanning is present. The metadata adapter is read-only. Whole-file SHA-256 is immutable import provenance and must not be treated as a stable fingerprint after embedded metadata changes.
