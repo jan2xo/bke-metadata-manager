@@ -115,7 +115,7 @@ public sealed class ExifToolRuntimeTests
 
     private static string[] RuntimeExtensions() =>
         (Environment.GetEnvironmentVariable("BKE_MEDIA_FIXTURE_EXTENSIONS") ?? "jpg,png,heic,mp4,mov")
-        .Split(\',\', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
     private static string NewTempDirectory()
     {
