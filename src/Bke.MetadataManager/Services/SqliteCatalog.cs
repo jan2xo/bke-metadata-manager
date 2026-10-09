@@ -17,7 +17,7 @@ public sealed class SqliteCatalog(string databasePath)
         DataSource = _databasePath,
         Mode = SqliteOpenMode.ReadWriteCreate,
         ForeignKeys = true,
-        Pooling = true
+        Pooling = false
     }.ToString();
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
