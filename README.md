@@ -9,8 +9,8 @@ Offline-first desktop application for cataloguing media, inspecting metadata, st
 This milestone imports and catalogs assets without modifying source media. It does not transcode, recompress, re-encode, edit metadata, bulk-commit edits, or rename files. An import only means catalog/fingerprint records were saved; it is not a committed metadata modification.
 
 ## Requirements
-- .NET 10 SDK
-- ExifTool installed locally for embedded metadata display (optional for build and launch). Set `EXIFTOOL_PATH` if the executable is not available as `exiftool` on PATH.
+- .NET 10 SDK for source builds (not required for self-contained test builds)
+- ExifTool installed separately for embedded metadata display. Set `EXIFTOOL_PATH` if the executable is not available as `exiftool` on PATH. ExifTool is not bundled with either platform build.
 
 ## Build and run
     dotnet restore Bke.MetadataManager.sln
@@ -42,7 +42,7 @@ Avalonia/.NET support is not a substitute for native operating-system validation
 
 | OS | Automated gate | Real desktop interaction |
 |---|---|---|
-| macOS arm64 | `.github/workflows/macos-runtime.yml`: build, tests, real JPEG/PNG/HEIC/MP4/MOV ExifTool reads, process launch | Finder drop, window rendering, dialogs and metadata viewing still need a person |
+| macOS arm64 | `.github/workflows/macos-runtime.yml`: build, tests, real JPEG/PNG/HEIC/MP4/MOV ExifTool reads, process launch and self-contained test publish | Finder drop, visual window rendering, dialogs and metadata viewing still need a person |
 | Windows x64 | `.github/workflows/windows-runtime.yml`: build, tests, real JPEG/PNG/MP4/MOV ExifTool reads, process launch and test-only self-contained publish | File Explorer drop, dialogs, viewing and Windows HEIC (where supported) still need a person |
 | Linux | `.github/workflows/dotnet.yml`: restore, build, tests | Not an MVP desktop release target |
 
@@ -56,5 +56,5 @@ For Windows development, install the .NET 10 SDK and ExifTool (for example `choc
 - ExifTool is an external dependency and must be installed separately to display tags.
 - Stable asset IDs are derived from normalized full paths; moving a file manually creates a new path identity until move tracking is implemented.
 - The macOS Apple Silicon workflow exercises generated JPEG, PNG, HEIC, MP4, and MOV fixtures with ExifTool and captures desktop startup evidence. It does not replace manual Finder drag-and-drop and visual UI certification.
-- Thumbnails, advanced duplicate review, revision browsing, packaging, and all metadata write/rename workflows remain out of scope.
+- Thumbnails, advanced duplicate review, revision browsing, installer creation, and all metadata write/rename workflows remain out of scope. Self-contained CI artifacts are test builds only, not production-certified packages.
 - Build/test success is reported from the actual latest CI run; do not infer it from the presence of this workflow.
