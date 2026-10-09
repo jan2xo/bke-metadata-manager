@@ -11,7 +11,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private readonly FileFingerprintService _fingerprints = new();
     private readonly SqliteCatalog _catalog;
     private readonly ExifToolMetadataReader _metadataReader;
-    private readonly HashSet<string> _knownPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _knownPaths = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
     private bool _initialized;
     private string _statusMessage = "Starting catalog…";
     private string _progressMessage = "No import in progress.";
@@ -94,7 +94,7 @@ public sealed class MainWindowViewModel : ObservableObject
             else ReportError(path, "Source path does not exist or is inaccessible.");
         }
 
-        var uniqueCandidates = candidates.Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var uniqueCandidates = candidates.Select(Path.GetFullPath).Distinct(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal).ToList();
         var added = 0;
         var skipped = 0;
         var failed = 0;
@@ -130,7 +130,7 @@ public sealed class MainWindowViewModel : ObservableObject
                         Assets[index] = imported with { Status = $"Duplicate content ({matches.Count} existing match(es))" };
                     }
                 }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Security.SecurityException)
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Security.SecurityException or Microsoft.Data.Sqlite.SqliteException)
                 {
                     failed++;
                     ReportError(fullPath, $"Import failed: {ex.Message}");
