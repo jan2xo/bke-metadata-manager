@@ -1,49 +1,95 @@
-<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="Bke.MetadataManager.MainWindow" Width="1100" Height="720" MinWidth="820" MinHeight="560" Title="BKE Metadata Manager — MVP 0.1.0">
-  <Grid RowDefinitions="Auto,*" ColumnDefinitions="220,*">
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Bke.MetadataManager.MainWindow"
+        Width="1180" Height="800" MinWidth="900" MinHeight="620"
+        Title="BKE Metadata Manager — MVP 0.1.0">
+  <Grid RowDefinitions="Auto,*" ColumnDefinitions="210,*">
     <Border Grid.Row="0" Grid.ColumnSpan="2" Padding="20" Background="#182638">
-      <StackPanel Spacing="4"><TextBlock Text="BKE METADATA MANAGER" FontSize="22" FontWeight="Bold" Foreground="White"/><TextBlock Text="Offline-first • Non-destructive • Reversible" Foreground="#B8C8D8"/></StackPanel>
+      <StackPanel Spacing="4">
+        <TextBlock Text="BKE METADATA MANAGER" FontSize="22" FontWeight="Bold" Foreground="White"/>
+        <TextBlock Text="Offline-first • Non-destructive • Reversible" Foreground="#B8C8D8"/>
+      </StackPanel>
     </Border>
     <Border Grid.Row="1" Grid.Column="0" Background="#F2F5F8" Padding="14">
       <StackPanel Spacing="10">
         <TextBlock Text="WORKSPACE" FontWeight="Bold" Foreground="#506174"/>
-        <Button Content="Import Queue" HorizontalContentAlignment="Left"/><Button Content="Asset Browser" HorizontalContentAlignment="Left"/>
-        <Button Content="Metadata Editor" HorizontalContentAlignment="Left"/><Button Content="Filename Preview" HorizontalContentAlignment="Left"/>
-        <Button Content="Duplicate Review" HorizontalContentAlignment="Left"/><Button Content="Revision History" HorizontalContentAlignment="Left"/>
-        <Separator/><TextBlock Text="Safety rules" FontWeight="Bold"/>
-        <TextBlock Text="• Never transcode media&#10;• Never overwrite files&#10;• Hash original bytes&#10;• Preserve before editing" TextWrapping="Wrap" Foreground="#425466"/>
+        <TextBlock Text="Asset Browser" FontWeight="SemiBold"/>
+        <Separator/>
+        <TextBlock Text="Safety rules" FontWeight="Bold"/>
+        <TextBlock Text="• Read-only media access&#10;• SHA-256 fingerprints&#10;• No overwrite or rename&#10;• Imports journaled in SQLite&#10;• Metadata edits are disabled" TextWrapping="Wrap" Foreground="#425466"/>
+        <Separator/>
+        <TextBlock Text="Import errors" FontWeight="Bold"/>
+        <ItemsControl ItemsSource="{Binding Errors}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="11" Foreground="#9B2C2C" Margin="0,2"/>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
       </StackPanel>
     </Border>
     <ScrollViewer Grid.Row="1" Grid.Column="1">
-      <StackPanel Margin="28" Spacing="18">
+      <StackPanel Margin="22" Spacing="14">
         <TextBlock Text="Import and inspect assets" FontSize="26" FontWeight="SemiBold"/>
-        <Border BorderBrush="#91A5B8" BorderThickness="2" CornerRadius="10" Padding="24" Background="#F8FAFC">
+        <Border BorderBrush="#91A5B8" BorderThickness="2" CornerRadius="10" Padding="20" Background="#F8FAFC"
+                DragDrop.AllowDrop="True" DragDrop.DragOver="DropZone_DragOver" DragDrop.Drop="DropZone_Drop">
           <StackPanel Spacing="10" HorizontalAlignment="Center">
-            <TextBlock Text="Import files or recursively scan folders" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-            <TextBlock Text="Files are read-only fingerprinted with SHA-256. Media bytes are never modified." TextWrapping="Wrap" HorizontalAlignment="Center"/>
+            <TextBlock Text="Drop multiple files or folders here" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+            <TextBlock Text="Folders are scanned recursively. Original media is only read and fingerprinted." TextWrapping="Wrap" HorizontalAlignment="Center"/>
             <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-              <Button Content="Choose files…" Click="ChooseFiles_Click"/><Button Content="Choose folders…" Click="ChooseFolders_Click"/>
+              <Button Content="Choose files…" Click="ChooseFiles_Click"/>
+              <Button Content="Choose folders…" Click="ChooseFolders_Click"/>
             </StackPanel>
           </StackPanel>
         </Border>
         <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap"/>
-        <Grid ColumnDefinitions="2*,*,*,*" Background="#E8EEF4" ColumnSpacing="8">
-          <TextBlock Grid.Column="0" Text="Filename / path" FontWeight="Bold" Margin="8"/><TextBlock Grid.Column="1" Text="Size" FontWeight="Bold" Margin="8"/>
-          <TextBlock Grid.Column="2" Text="SHA-256" FontWeight="Bold" Margin="8"/><TextBlock Grid.Column="3" Text="Status" FontWeight="Bold" Margin="8"/>
-        </Grid>
-        <ItemsControl ItemsSource="{Binding Assets}">
-          <ItemsControl.ItemTemplate>
+        <ProgressBar Minimum="0" Maximum="100" Value="{Binding ImportProgress}" IsIndeterminate="{Binding IsImporting}" Height="8"/>
+        <TextBlock Text="{Binding ProgressMessage}" FontSize="11" Foreground="#65788A" TextWrapping="Wrap"/>
+        <TextBlock Text="ASSETS" FontWeight="Bold" Foreground="#506174"/>
+        <ListBox ItemsSource="{Binding Assets}" SelectedItem="{Binding SelectedAsset}" SelectionChanged="Assets_SelectionChanged" MinHeight="170" MaxHeight="300">
+          <ListBox.ItemTemplate>
             <DataTemplate>
               <Border BorderBrush="#D5DEE7" BorderThickness="0,0,0,1" Padding="8">
                 <Grid ColumnDefinitions="2*,*,*,*" ColumnSpacing="8">
-                  <StackPanel Grid.Column="0" Spacing="3"><TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding Path}" FontSize="11" Foreground="#65788A" TextWrapping="Wrap"/></StackPanel>
-                  <TextBlock Grid.Column="1" Text="{Binding SizeDisplay}" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Sha256}" FontSize="10" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                  <StackPanel Grid.Column="0" Spacing="3">
+                    <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Path}" FontSize="10" Foreground="#65788A" TextWrapping="Wrap"/>
+                  </StackPanel>
+                  <TextBlock Grid.Column="1" Text="{Binding SizeDisplay}" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Sha256}" FontSize="9" TextWrapping="Wrap" VerticalAlignment="Center"/>
                   <TextBlock Grid.Column="3" Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center"/>
                 </Grid>
               </Border>
             </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <TextBlock Text="Metadata editing, rename commits, and rollback remain disabled until the recoverable commit engine is implemented." TextWrapping="Wrap" Foreground="#8A4B12"/>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock Text="READ-ONLY METADATA" FontWeight="Bold" Foreground="#506174"/>
+        <Border BorderBrush="#D5DEE7" BorderThickness="1" CornerRadius="8" Padding="12">
+          <StackPanel Spacing="8">
+            <TextBlock Text="{Binding SelectedAsset.FileName, FallbackValue=Select an asset above}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="5">
+              <TextBlock Grid.Row="0" Text="Capture time" FontWeight="SemiBold"/><TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CaptureTimestamp}" TextWrapping="Wrap"/>
+              <TextBlock Grid.Row="1" Text="Creator" FontWeight="SemiBold"/><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Creator}" TextWrapping="Wrap"/>
+              <TextBlock Grid.Row="2" Text="Description" FontWeight="SemiBold"/><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Description}" TextWrapping="Wrap"/>
+              <TextBlock Grid.Row="3" Text="Keywords" FontWeight="SemiBold"/><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Keywords}" TextWrapping="Wrap"/>
+              <TextBlock Grid.Row="4" Text="Copyright" FontWeight="SemiBold"/><TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Copyright}" TextWrapping="Wrap"/>
+              <TextBlock Grid.Row="5" Text="Original filename" FontWeight="SemiBold"/><TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding SelectedAsset.OriginalFilename}" TextWrapping="Wrap"/>
+            </Grid>
+            <TextBlock Text="{Binding MetadataError}" Foreground="#9B2C2C" TextWrapping="Wrap"/>
+            <TextBlock Text="All extracted tags" FontWeight="SemiBold"/>
+            <ItemsControl ItemsSource="{Binding MetadataItems}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="*,2*" ColumnSpacing="8" Margin="0,2">
+                    <TextBlock Grid.Column="0" Text="{Binding Key}" FontSize="11" TextWrapping="Wrap" Foreground="#425466"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="11" TextWrapping="Wrap"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+        <TextBlock Text="This milestone does not write metadata, rename files, or commit edits. ExifTool must be installed separately to display embedded metadata." TextWrapping="Wrap" Foreground="#8A4B12"/>
       </StackPanel>
     </ScrollViewer>
   </Grid>
