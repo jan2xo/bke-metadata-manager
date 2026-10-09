@@ -32,7 +32,7 @@ public sealed class ExifToolRuntimeTests
             return; // Real-format integration is exercised by the macOS Apple Silicon workflow.
 
         var reader = new ExifToolMetadataReader(exifToolPath);
-        foreach (var extension in new[] { "jpg", "png", "heic", "mp4", "mov" })
+        foreach (var extension in RuntimeExtensions())
         {
             var path = Path.Combine(fixtureDirectory, $"sample.{extension}");
             Assert.True(File.Exists(path), $"Missing runtime fixture: {path}");
@@ -59,7 +59,7 @@ public sealed class ExifToolRuntimeTests
         Assert.Equal("BKE test only", viewModel.Copyright);
 
         // Exercise the real media files through import, metadata reading, restart, and reimport.
-        var mediaPaths = new[] { "jpg", "png", "heic", "mp4", "mov" }
+        var mediaPaths = RuntimeExtensions()
             .Select(extension => Path.Combine(fixtureDirectory, $"sample.{extension}"))
             .ToArray();
         var fingerprints = new FileFingerprintService();
@@ -112,6 +112,10 @@ public sealed class ExifToolRuntimeTests
         }
         finally { Directory.Delete(root, true); }
     }
+
+    private static string[] RuntimeExtensions() =>
+        (Environment.GetEnvironmentVariable("BKE_MEDIA_FIXTURE_EXTENSIONS") ?? "jpg,png,heic,mp4,mov")
+        .Split(\',\', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
     private static string NewTempDirectory()
     {
