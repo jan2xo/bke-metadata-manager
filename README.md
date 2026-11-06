@@ -62,3 +62,28 @@ To package a local macOS ARM64 publish output:
 dotnet publish src/Bke.MetadataManager/Bke.MetadataManager.csproj -c Release -r osx-arm64 --self-contained true -o output
 bash scripts/package-macos.sh output dist
 ```
+
+
+## Apple-inspired glassmorphism UI
+
+The main window uses a native-looking macOS title region, a translucent slate-glass backdrop,
+frosted event entry and destination/status cards, individually highlighted warm-gold drop tiles,
+an always-last `+` category tile, a live filename example, and an operational Reveal in Finder
+action. Settings uses the same glass surfaces. All controls remain real Avalonia controls;
+the illustration is **not** baked into the application.
+
+On supported Windows editions, Avalonia can request Mica/AcrylicBlur. Avalonia 11 has
+more limited macOS backdrop support; on macOS, the style is achieved with transparent,
+layered, gradient-tinted surfaces, and the OS may not provide a native blur-behind effect.
+No claim of native Apple Liquid Glass API integration is made.
+
+### Visual acceptance
+
+- Compare against the approved mockup: native traffic lights, centered title,
+  subtle yellow accents, frosted Event / Destination strips, four tiles across at full width.
+- Drag over each individual tile: only that tile gains a brighter gold edge.
+- Use a smaller window: categories wrap without overlapping the Event or status bars.
+- Add a category; the new tile appears before the permanent `+` tile.
+- Change the Event name; example filename and destination preview update.
+- Drop media and verify physical MOVE + rename, status counts and Reveal in Finder.
+- Preserve collision refusal and verified-source-deletion behavior.

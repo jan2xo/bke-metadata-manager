@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -11,11 +13,14 @@ namespace Bke.MetadataManager;
 
 public partial class MainWindow : Window
 {
-    private static readonly IBrush Yellow = new SolidColorBrush(Color.Parse("#FFD229"));
-    private static readonly IBrush Idle = new SolidColorBrush(Color.Parse("#635623"));
-    private static readonly IBrush Tile = new SolidColorBrush(Color.Parse("#171717"));
-    private static readonly IBrush Hover = new SolidColorBrush(Color.Parse("#302909"));
-    private static readonly IBrush Gray = new SolidColorBrush(Color.Parse("#999999"));
+    private static readonly IBrush Gold = Brush("#FFE0A3");
+    private static readonly IBrush White = Brush("#F8F9FD");
+    private static readonly IBrush Muted = Brush("#B7C0D0");
+    private static readonly IBrush TileIdle = Brush("#2AFFFFFF");
+    private static readonly IBrush TileHover = Brush("#42F5D298");
+    private static readonly IBrush BorderIdle = Brush("#B4E8C88E");
+    private static readonly IBrush BorderHover = Brush("#FFFFC971");
+    private static readonly IBrush AddIdle = Brush("#18FFFFFF");
     private readonly SettingsStore _store = new();
     private readonly MediaOrganizer _organizer = new();
     private readonly Dictionary<string, int> _totals = new(StringComparer.OrdinalIgnoreCase);
@@ -23,6 +28,8 @@ public partial class MainWindow : Window
     private bool _busy;
     private int _moved;
     private bool _editingCategory;
+
+    private static IBrush Brush(string hex) => new SolidColorBrush(Color.Parse(hex));
 
     public MainWindow()
     {
@@ -34,14 +41,42 @@ public partial class MainWindow : Window
             StatusText.Text = "Settings could not load: " + ex.Message;
         }
         RenderTiles();
-        EventBox.Focus();
+        RefreshEventSummary();
+        Opened += (_, _) => EventBox.Focus();
     }
 
     private void EventBox_TextChanged(object? sender, TextChangedEventArgs e)
     {
-        if (StatusText is null) return;
-        if (string.IsNullOrWhiteSpace(EventBox.Text))
-            StatusText.Text = "Type an event name before dropping files.";
+        if (FilenamePreviewText is null || DestinationText is null) return;
+        RefreshEventSummary();
+    }
+
+    private void ClearEvent_Click(object? sender, RoutedEventArgs e) => EventBox.Clear();
+
+    private void RefreshEventSummary()
+    {
+        var eventInput = EventBox.Text?.Trim();
+        var destination = _settings.DestinationFolder;
+        var eventDisplay = "EVENT";
+        if (!string.IsNullOrWhiteSpace(eventInput))
+        {
+            try { eventDisplay = PathNames.Segment(eventInput); }
+            catch (ArgumentException) { eventDisplay = "INVALID-EVENT"; }
+        }
+        FilenamePreviewText.Text = $"{DateTime.Today:yyyy-MM-dd}-C0123-{eventDisplay}-Drone.MP4";
+        if (string.IsNullOrWhiteSpace(destination))
+            DestinationText.Text = "Choose destination in Settings";
+        else if (string.IsNullOrWhiteSpace(eventInput) || eventDisplay == "INVALID-EVENT")
+            DestinationText.Text = destination;
+        else
+            DestinationText.Text = Path.Combine(destination, eventDisplay);
+
+        if (string.IsNullOrWhiteSpace(eventInput) && _moved == 0)
+            StatusText.Text = "Name an event, choose a destination, then drop footage.";
+        else if (!Directory.Exists(destination) && _moved == 0)
+            StatusText.Text = "Choose a destination folder in Settings to enable file drops.";
+        else if (_moved == 0)
+            StatusText.Text = "Drop files onto a category. Each file will be moved and renamed automatically.";
     }
 
     private void RenderTiles()
@@ -54,50 +89,96 @@ public partial class MainWindow : Window
 
     private Border MakeDropTile(string category)
     {
-        var n = _totals.GetValueOrDefault(category);
-        var card = new Border
+        var count = _totals.GetValueOrDefault(category);
+        var contents = new StackPanel
         {
-            Width = 262, Height = 157, Margin = new Thickness(0, 0, 14, 14),
-            Background = Tile, BorderBrush = Idle, BorderThickness = new Thickness(1.5),
-            CornerRadius = new CornerRadius(12), Padding = new Thickness(19),
-            Child = new StackPanel
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Spacing = 13,
+            Children =
             {
-                Spacing = 10,
-                Children =
+                CategoryIcon(category),
+                new TextBlock
                 {
-                    new TextBlock { Text = "↓", FontSize = 24, Foreground = Yellow, FontWeight = FontWeight.Bold },
-                    new TextBlock { Text = category.ToUpperInvariant(), FontSize = 16, Foreground = Brushes.White,
-                        FontWeight = FontWeight.Bold, TextTrimming = TextTrimming.CharacterEllipsis },
-                    new TextBlock { Text = n > 0 ? $"{n} moved  ·  Drop more" : "DROP FILES HERE", Foreground = Gray, FontSize = 11 }
+                    Text = category, FontSize = 19, FontWeight = FontWeight.SemiBold,
+                    Foreground = White, HorizontalAlignment = HorizontalAlignment.Center,
+                    TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 206
+                },
+                new TextBlock
+                {
+                    Text = count > 0 ? $"{count} moved · Drop more" : "Drop files here",
+                    FontSize = 12, Foreground = Muted,
+                    HorizontalAlignment = HorizontalAlignment.Center
                 }
             }
+        };
+        var card = new Border
+        {
+            Width = 244, Height = 217, Margin = new Thickness(0, 0, 14, 14),
+            Padding = new Thickness(14), CornerRadius = new CornerRadius(22),
+            Background = TileIdle, BorderBrush = BorderIdle,
+            BorderThickness = new Thickness(1.25), Child = contents
         };
         DragDrop.SetAllowDrop(card, true);
         card.AddHandler(DragDrop.DragEnterEvent, (_, e) =>
         {
-            if (CanDrop(e)) { card.Background = Hover; card.BorderBrush = Yellow; card.BorderThickness = new Thickness(2.5); }
+            if (CanDrop(e))
+            {
+                card.Background = TileHover;
+                card.BorderBrush = BorderHover;
+                card.BorderThickness = new Thickness(2.5);
+            }
             e.Handled = true;
         });
-        card.AddHandler(DragDrop.DragLeaveEvent, (_, e) => { ResetTile(card); e.Handled = true; });
+        card.AddHandler(DragDrop.DragLeaveEvent, (_, e) =>
+        {
+            ResetTile(card);
+            e.Handled = true;
+        });
         card.AddHandler(DragDrop.DragOverEvent, (_, e) =>
         {
-            // The OS drag source must NOT delete anything for us; our verified async mover owns source removal.
+            // Report Copy to Finder so Finder never deletes the source on our behalf.
+            // Our file mover independently verifies then removes the source.
             e.DragEffects = CanDrop(e) ? DragDropEffects.Copy : DragDropEffects.None;
             e.Handled = true;
         });
         card.AddHandler(DragDrop.DropEvent, (_, e) =>
         {
             ResetTile(card);
-            // The OS drag source must NOT delete anything for us; our verified async mover owns source removal.
             e.DragEffects = CanDrop(e) ? DragDropEffects.Copy : DragDropEffects.None;
             e.Handled = true;
             if (e.DragEffects != DragDropEffects.Copy) return;
-            var paths = e.Data.GetFiles()?.Select(f => f.Path.LocalPath)
+            var paths = e.Data.GetFiles()?.Select(file => file.Path.LocalPath)
                 .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
                 .Select(path => path!).ToArray() ?? [];
             _ = ProcessDropAsync(paths, category);
         });
         return card;
+    }
+
+    private static Control CategoryIcon(string category)
+    {
+        var data = category.ToLowerInvariant() switch
+        {
+            "establishing" => "M3 5 L16 5 Q18 5 18 7 L18 17 Q18 19 16 19 L3 19 Q2 19 2 17 L2 7 Q2 5 3 5 Z M18 9 L23 6 L23 18 L18 15",
+            "detail" => "M3 4 L21 4 L21 20 L3 20 Z M3 17 L9 11 L13 15 L17 12 L21 16 M8 8 L10 8 L10 10 L8 10 Z",
+            "drone" => "M2 6 L8 6 M16 6 L22 6 M5 6 L5 11 L19 11 L19 6 M9 11 L9 15 L15 15 L15 11 M9 15 L8 19 M15 15 L16 19 M11 14 L13 14",
+            _ => "M2 7 L2 5 Q2 4 4 4 L10 4 L12 6 L21 6 Q22 6 22 8 L22 19 Q22 20 20 20 L4 20 Q2 20 2 18 Z"
+        };
+        var shape = new Path
+        {
+            Data = Geometry.Parse(data),
+            Stroke = Gold, Fill = Brushes.Transparent,
+            StrokeThickness = 1.6, StrokeLineCap = PenLineCap.Round,
+            StrokeJoin = PenLineJoin.Round
+        };
+        var canvas = new Canvas { Width = 24, Height = 24, Children = { shape } };
+        return new Viewbox
+        {
+            Width = 50, Height = 50,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Child = canvas
+        };
     }
 
     private bool CanDrop(DragEventArgs e) =>
@@ -107,9 +188,9 @@ public partial class MainWindow : Window
 
     private static void ResetTile(Border card)
     {
-        card.Background = Tile;
-        card.BorderBrush = Idle;
-        card.BorderThickness = new Thickness(1.5);
+        card.Background = TileIdle;
+        card.BorderBrush = BorderIdle;
+        card.BorderThickness = new Thickness(1.25);
     }
 
     private async Task ProcessDropAsync(string[] paths, string category)
@@ -125,7 +206,7 @@ public partial class MainWindow : Window
         {
             foreach (var path in paths)
             {
-                StatusText.Text = $"Moving {Path.GetFileName(path)} → {category}...";
+                StatusText.Text = $"Moving {System.IO.Path.GetFileName(path)} to {category}…";
                 try
                 {
                     var result = await _organizer.MoveAsync(path, destination, eventName, category);
@@ -134,16 +215,23 @@ public partial class MainWindow : Window
                     if (result.Warning is not null) warnings.Add(result.Warning);
                     _totals[category] = _totals.GetValueOrDefault(category) + 1;
                 }
-                catch (Exception ex) { failures.Add($"{Path.GetFileName(path)}: {ex.Message}"); }
-                CounterText.Text = $"{_moved} MOVED";
+                catch (Exception ex)
+                {
+                    failures.Add($"{System.IO.Path.GetFileName(path)}: {ex.Message}");
+                }
+                CounterText.Text = $"{_moved} {(_moved == 1 ? "file" : "files")} moved and ready";
             }
         }
-        finally { _busy = false; RenderTiles(); }
+        finally
+        {
+            _busy = false;
+            RenderTiles();
+        }
         StatusText.Text = failures.Count > 0
-            ? $"{completed}/{paths.Length} moved. {failures.Count} rejected (source retained). {string.Join("  |  ", failures.Take(2))}"
+            ? $"{completed}/{paths.Length} moved · {failures.Count} rejected (source retained). {string.Join(" | ", failures.Take(2))}"
             : warnings.Count > 0
-                ? $"{completed} moved. Warning: {string.Join("  |  ", warnings.Take(1))}"
-                : $"{completed} file(s) moved and renamed to {eventName}/{category}.";
+                ? $"{completed} moved · Warning: {string.Join(" | ", warnings.Take(1))}"
+                : $"Organized into {category} · Moved and renamed to {PathNames.Segment(eventName)}.";
     }
 
     private Control MakeAddTile()
@@ -152,15 +240,17 @@ public partial class MainWindow : Window
         {
             var input = new TextBox
             {
-                Watermark = "Category name", Width = 220, FontSize = 14,
-                Background = Tile, Foreground = Brushes.White,
-                BorderBrush = Yellow, BorderThickness = new Thickness(1),
-                Margin = new Thickness(0, 0, 0, 8)
+                Watermark = "Category name", FontSize = 14, Height = 48,
+                Background = Brush("#25FFFFFF"), Foreground = White,
+                BorderBrush = Gold, BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10), Margin = new Thickness(0, 0, 0, 10)
             };
             var save = new Button
             {
-                Content = "ADD CATEGORY ↵", Background = Yellow, Foreground = Brushes.Black,
-                HorizontalAlignment = HorizontalAlignment.Stretch, FontWeight = FontWeight.Bold
+                Content = "Add category", Background = Brush("#E9D2A3"),
+                Foreground = Brush("#23283A"), FontWeight = FontWeight.SemiBold,
+                CornerRadius = new CornerRadius(10), Padding = new Thickness(13, 9),
+                HorizontalAlignment = HorizontalAlignment.Stretch
             };
             void Commit()
             {
@@ -173,7 +263,7 @@ public partial class MainWindow : Window
                     _store.Save(_settings);
                     _editingCategory = false;
                     RenderTiles();
-                    StatusText.Text = $"Category {value} added. Drop files directly onto its tile.";
+                    StatusText.Text = $"Category {value} added. Drop footage directly onto its tile.";
                 }
                 catch (Exception ex) { StatusText.Text = ex.Message; }
             }
@@ -186,28 +276,52 @@ public partial class MainWindow : Window
             Dispatcher.UIThread.Post(() => input.Focus());
             return new Border
             {
-                Width = 262, Height = 157, Padding = new Thickness(16),
-                Margin = new Thickness(0, 0, 14, 14), CornerRadius = new CornerRadius(12),
-                BorderThickness = new Thickness(1.5), BorderBrush = Yellow, Background = Tile,
-                Child = new StackPanel { Spacing = 4, Children = { input, save } }
+                Width = 244, Height = 217, Padding = new Thickness(20),
+                Margin = new Thickness(0, 0, 14, 14),
+                CornerRadius = new CornerRadius(22),
+                Background = AddIdle, BorderBrush = BorderIdle,
+                BorderThickness = new Thickness(1.25),
+                Child = new StackPanel
+                {
+                    Spacing = 6, VerticalAlignment = VerticalAlignment.Center,
+                    Children =
+                    {
+                        new TextBlock { Text = "New category", Foreground = White,
+                            FontSize = 14, FontWeight = FontWeight.SemiBold },
+                        input, save
+                    }
+                }
             };
         }
+        var plusCircle = new Border
+        {
+            Width = 52, Height = 52,
+            CornerRadius = new CornerRadius(26),
+            BorderBrush = Brush("#83D9E0EC"), BorderThickness = new Thickness(1),
+            Background = Brush("#40FFFFFF"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = "+", FontSize = 29, Foreground = White,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            }
+        };
         var plus = new Button
         {
-            Width = 262, Height = 157, Margin = new Thickness(0, 0, 14, 14),
-            Background = new SolidColorBrush(Color.Parse("#111111")),
-            Foreground = Yellow, BorderBrush = Idle,
-            BorderThickness = new Thickness(1.5), CornerRadius = new CornerRadius(12),
+            Width = 244, Height = 217, Margin = new Thickness(0, 0, 14, 14),
+            Background = AddIdle, BorderBrush = Brush("#74BFC6D7"),
+            Foreground = White, BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(22),
             Content = new StackPanel
             {
-                Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
+                Spacing = 16, VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
                 Children =
                 {
-                    new TextBlock { Text = "+", FontSize = 35, Foreground = Yellow,
-                        HorizontalAlignment = HorizontalAlignment.Center },
-                    new TextBlock { Text = "ADD CATEGORY", FontSize = 12, FontWeight = FontWeight.Bold,
-                        Foreground = Yellow, HorizontalAlignment = HorizontalAlignment.Center }
+                    plusCircle,
+                    new TextBlock { Text = "Add Category", FontSize = 16, Foreground = Muted,
+                        HorizontalAlignment = HorizontalAlignment.Center }
                 }
             }
         };
@@ -217,11 +331,34 @@ public partial class MainWindow : Window
 
     private async void OpenSettings_Click(object? sender, RoutedEventArgs e)
     {
-        var dialog = new SettingsWindow(_settings, _store);
-        await dialog.ShowDialog(this);
+        await new SettingsWindow(_settings, _store).ShowDialog(this);
         RenderTiles();
-        StatusText.Text = Directory.Exists(_settings.DestinationFolder)
-            ? "Destination: " + _settings.DestinationFolder
-            : "Choose a destination folder in Settings before dropping files.";
+        RefreshEventSummary();
+    }
+
+    private void RevealDestination_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var root = _settings.DestinationFolder;
+            if (!Directory.Exists(root))
+            {
+                StatusText.Text = "Set a destination folder in Settings first.";
+                return;
+            }
+            var eventName = EventBox.Text?.Trim();
+            var folder = root;
+            if (!string.IsNullOrWhiteSpace(eventName))
+            {
+                var eventFolder = System.IO.Path.Combine(root, PathNames.Segment(eventName));
+                if (Directory.Exists(eventFolder)) folder = eventFolder;
+            }
+            var executable = OperatingSystem.IsMacOS() ? "open"
+                : OperatingSystem.IsWindows() ? "explorer.exe" : "xdg-open";
+            var start = new ProcessStartInfo(executable) { UseShellExecute = false };
+            start.ArgumentList.Add(folder);
+            Process.Start(start);
+        }
+        catch (Exception ex) { StatusText.Text = "Unable to reveal destination: " + ex.Message; }
     }
 }
