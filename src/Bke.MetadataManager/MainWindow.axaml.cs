@@ -81,15 +81,17 @@ public partial class MainWindow : Window
         card.AddHandler(DragDrop.DragLeaveEvent, (_, e) => { ResetTile(card); e.Handled = true; });
         card.AddHandler(DragDrop.DragOverEvent, (_, e) =>
         {
-            e.DragEffects = CanDrop(e) ? DragDropEffects.Move : DragDropEffects.None;
+            // The OS drag source must NOT delete anything for us; our verified async mover owns source removal.
+            e.DragEffects = CanDrop(e) ? DragDropEffects.Copy : DragDropEffects.None;
             e.Handled = true;
         });
         card.AddHandler(DragDrop.DropEvent, (_, e) =>
         {
             ResetTile(card);
-            e.DragEffects = CanDrop(e) ? DragDropEffects.Move : DragDropEffects.None;
+            // The OS drag source must NOT delete anything for us; our verified async mover owns source removal.
+            e.DragEffects = CanDrop(e) ? DragDropEffects.Copy : DragDropEffects.None;
             e.Handled = true;
-            if (e.DragEffects != DragDropEffects.Move) return;
+            if (e.DragEffects != DragDropEffects.Copy) return;
             var paths = e.Data.GetFiles()?.Select(f => f.Path.LocalPath)
                 .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
                 .Select(path => path!).ToArray() ?? [];
