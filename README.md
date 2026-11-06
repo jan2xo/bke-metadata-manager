@@ -95,3 +95,13 @@ are not duplicated. Windows/Linux continue using Avalonia.
 - Preserve collision refusal and verified-source-deletion behavior.
 
 - On a Mac, move a colorful Finder window or another app BEHIND the organizer: the window should visibly blur it through the translucent background. Close the app and relaunch after changing Accessibility → Display → Reduce Transparency. This is a manual compositor test that CI cannot simulate.
+
+## Responsive category layout and tile removal
+
+- Every category tile has an unobtrusive **×** button (and a right-click **Remove Category** option).
+- Removing one asks for confirmation, then deletes **only** its name from the local JSON category registry; **no event folders, files, or previous manifests are deleted**.
+- Removal works for built-in and custom categories. Deleting every category is supported: the add tile remains, and the empty registry stays empty after a restart.
+- A failed settings write rolls back the registry change and displays the error.
+- The native macOS window now starts at 890 × 605 points and can be resized down to 540 × 430 points. The category grid uses an `adaptive` column layout that continuously recalculates from the actual content width, with compact tile heights and gaps on smaller windows.
+- At reduced heights, the grid **scrolls within its own space** rather than clipping tiles under the footer. The + tile remains the final item in the grid.
+- Actual responsive design requires desktop visual acceptance at small, medium, wide and short window sizes; CI compiler checks cannot prove compositing or hit-target sizes.

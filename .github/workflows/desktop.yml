@@ -52,6 +52,11 @@ jobs:
           grep -q 'view.material = .underWindowBackground' macos/BKEOrganizerApp.swift
           grep -q 'window.backgroundColor = .clear' macos/BKEOrganizerApp.swift
           grep -q 'window.isOpaque = false' macos/BKEOrganizerApp.swift
+          grep -q 'func removeCategory(_ name: String)' macos/BKEOrganizerApp.swift
+          grep -q 'categories = settings.categories' macos/BKEOrganizerApp.swift
+          grep -q 'GridItem(.adaptive(' macos/BKEOrganizerApp.swift
+          grep -q '.confirmationDialog(' macos/BKEOrganizerApp.swift
+          grep -q 'Existing event media remains untouched.' macos/BKEOrganizerApp.swift
           if grep -Eq 'AmbientBackdrop|LinearGradient\\(' macos/BKEOrganizerApp.swift; then
             echo 'FAIL: simulated gradient backdrop reintroduced'
             exit 1

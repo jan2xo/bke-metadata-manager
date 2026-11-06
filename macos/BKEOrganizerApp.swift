@@ -103,7 +103,7 @@ final class OrganizerState: ObservableObject {
             let contents = try Data(contentsOf: settingsURL)
             let settings = try JSONDecoder().decode(StoredSettings.self, from: contents)
             destinationFolder = settings.destinationFolder
-            categories = settings.categories.isEmpty ? ["Establishing", "Detail", "Drone"] : settings.categories
+            categories = settings.categories // An intentionally empty registry must stay empty after restart.
             status = "Ready to organize"
             detail = destinationFolder.isEmpty
                 ? "Choose your destination in Settings."
@@ -118,7 +118,8 @@ final class OrganizerState: ObservableObject {
         }
     }
 
-    func save() {
+    @discardableResult
+    func save() -> Bool {
         do {
             let settings = StoredSettings(destinationFolder: destinationFolder, categories: categories)
             let parent = settingsURL.deletingLastPathComponent()
@@ -126,10 +127,12 @@ final class OrganizerState: ObservableObject {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(settings).write(to: settingsURL, options: .atomic)
+            return true
         } catch {
             status = "Settings could not be saved"
             detail = error.localizedDescription
             hasError = true
+            return false
         }
     }
 
@@ -142,7 +145,27 @@ final class OrganizerState: ObservableObject {
             throw NSError(domain: "BKE", code: 11, userInfo: [NSLocalizedDescriptionKey: "That category already exists."])
         }
         categories.append(value)
-        save()
+        if !save() {
+            categories.removeLast()
+            throw NSError(domain: "BKE", code: 12,
+                          userInfo: [NSLocalizedDescriptionKey: "Could not persist the new category."])
+        }
+    }
+
+    // Removing a tile only updates the JSON registry, never any on-disk footage.
+    func removeCategory(_ name: String) {
+        guard !busy else { return }
+        let previous = categories
+        categories.removeAll { $0 == name }
+        guard categories.count != previous.count else { return }
+        if !save() {
+            categories = previous
+            return
+        }
+        movedPerCategory.removeValue(forKey: name)
+        hasError = false
+        status = "Category removed"
+        detail = "\(name) was removed from the tiles. Existing event media remains untouched."
     }
 
     static func sanitized(_ value: String) -> String {
@@ -296,7 +319,10 @@ private struct GlassPanel<Content: View>: View {
 private struct DropTile: View {
     let category: String
     @ObservedObject var state: OrganizerState
+    let compact: Bool
     @State private var targeted = false
+    @State private var hovered = false
+    @State private var confirmingRemoval = false
 
     private var icon: String {
         switch category.lowercased() {
@@ -309,68 +335,106 @@ private struct DropTile: View {
     }
 
     var body: some View {
-        VStack(spacing: 13) {
+        VStack(spacing: compact ? 7 : 9) {
             Image(systemName: icon)
-                .font(.system(size: 31, weight: .ultraLight))
+                .font(.system(size: compact ? 23 : 27, weight: .light))
                 .foregroundStyle(Palette.gold)
-                .frame(height: 43)
+                .frame(height: compact ? 31 : 36)
                 .accessibilityHidden(true)
             Text(category)
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: compact ? 13 : 15, weight: .semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .minimumScaleFactor(0.7)
             Text(state.movedPerCategory[category, default: 0] > 0
-                ? "\(state.movedPerCategory[category, default: 0]) moved · Drop more"
+                ? "\(state.movedPerCategory[category, default: 0]) moved"
                 : "Drop files here")
-                .font(.system(size: 12))
+                .font(.system(size: compact ? 10 : 11))
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 180)
-        .padding(.horizontal, 12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 21, style: .continuous))
-        .background {
-            RoundedRectangle(cornerRadius: 21)
-                .fill(Palette.gold.opacity(targeted ? 0.23 : 0.02))
-        }
+        .frame(height: compact ? 114 : 134)
+        .padding(.horizontal, compact ? 6 : 10)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 21, style: .continuous)
-                .strokeBorder(targeted ? Palette.gold : Palette.gold.opacity(0.47),
-                              lineWidth: targeted ? 2.5 : 0.9)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(targeted ? Palette.gold : Palette.gold.opacity(0.39),
+                              lineWidth: targeted ? 2 : 0.8)
         }
-        .shadow(color: Palette.gold.opacity(targeted ? 0.22 : 0.06),
-                radius: targeted ? 20 : 7, y: 6)
-        .scaleEffect(targeted ? 1.018 : 1.0)
-        .animation(.easeOut(duration: 0.16), value: targeted)
+        .shadow(color: Palette.gold.opacity(targeted ? 0.18 : 0.03),
+                radius: targeted ? 12 : 4, y: 3)
+        .scaleEffect(targeted ? 1.014 : 1.0)
+        .animation(.easeOut(duration: 0.15), value: targeted)
         .onDrop(of: [.fileURL], isTargeted: $targeted) { providers in
             state.accept(providers, category: category)
+        }
+        .onHover { hovered = $0 }
+        .overlay(alignment: .topTrailing) {
+            // Always faintly visible, stronger on hover. Removing a category never
+            // touches any organized media folder, file or event manifest.
+            Button {
+                confirmingRemoval = true
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 24, height: 24)
+                    .background(.regularMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .opacity(hovered ? 1 : 0.6)
+            .padding(7)
+            .disabled(state.busy)
+            .help("Remove \(category) tile (files are kept)")
+            .accessibilityLabel("Remove \(category) category")
+        }
+        .contextMenu {
+            Button(role: .destructive) {
+                confirmingRemoval = true
+            } label: {
+                Label("Remove Category", systemImage: "trash")
+            }
+        }
+        .confirmationDialog("Remove \(category)?",
+                            isPresented: $confirmingRemoval) {
+            Button("Remove Tile", role: .destructive) {
+                state.removeCategory(category)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the category tile only. Already organized files and folders are not deleted.")
         }
         .accessibilityLabel("\(category), drop files here")
     }
 }
 
 private struct AddCategoryTile: View {
+    let compact: Bool
     let action: () -> Void
+
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 14) {
+            VStack(spacing: compact ? 7 : 11) {
                 Image(systemName: "plus")
-                    .font(.system(size: 22, weight: .light))
-                    .frame(width: 49, height: 49)
+                    .font(.system(size: compact ? 17 : 20, weight: .light))
+                    .frame(width: compact ? 35 : 41, height: compact ? 35 : 41)
                     .background(.thinMaterial, in: Circle())
-                    .overlay { Circle().stroke(.white.opacity(0.26), lineWidth: 0.8) }
+                    .overlay { Circle().stroke(.white.opacity(0.20), lineWidth: 0.8) }
                 Text("Add Category")
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: compact ? 12 : 14, weight: .medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity)
-            .frame(height: 180)
-            .padding(.horizontal, 12)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 21))
+            .frame(height: compact ? 114 : 134)
+            .padding(.horizontal, compact ? 6 : 10)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
             .overlay {
-                RoundedRectangle(cornerRadius: 21)
-                    .strokeBorder(.white.opacity(0.31), style: StrokeStyle(lineWidth: 1, dash: [6, 5]))
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(.white.opacity(0.27),
+                                  style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
             }
         }
         .buttonStyle(.plain)
@@ -494,25 +558,34 @@ private struct MainView: View {
         ZStack {
             DesktopBackdrop()
                 .ignoresSafeArea()
-            VStack(spacing: 18) {
+            VStack(spacing: 10) {
                 header
                 GlassPanel { eventForm }
                 GlassPanel { destinationStrip }
                 GeometryReader { geo in
-                    let count = geo.size.width > 905 ? 4 : (geo.size.width > 650 ? 3 : 2)
-                    let columns = Array(repeating: GridItem(.flexible(minimum: 150), spacing: 15), count: count)
+                    // Adaptive columns derive from the ACTUAL resizable window width,
+                    // not a hard-coded 3/4-column count. The tile heights also shrink
+                    // when the usable viewport is small.
+                    let compact = geo.size.width < 720 || geo.size.height < 230
+                    let gap: CGFloat = compact ? 9 : 12
+                    let columns = [
+                        GridItem(.adaptive(
+                            minimum: compact ? 128 : 155,
+                            maximum: compact ? 200 : 225), spacing: gap)
+                    ]
                     ScrollView {
-                        LazyVGrid(columns: columns, spacing: 15) {
+                        LazyVGrid(columns: columns, spacing: gap) {
                             ForEach(state.categories, id: \.self) { category in
-                                DropTile(category: category, state: state)
+                                DropTile(category: category, state: state, compact: compact)
                             }
-                            AddCategoryTile { addOpen = true }
+                            AddCategoryTile(compact: compact) { addOpen = true }
                         }
-                        .padding(.vertical, 9)
+                        .padding(.vertical, 4)
+                        .animation(.easeOut(duration: 0.12), value: compact)
                     }
                     .scrollIndicators(.automatic)
                 }
-                VStack(spacing: 7) {
+                VStack(spacing: 3) {
                     Text("Drop files directly onto a category")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.secondary)
@@ -530,11 +603,11 @@ private struct MainView: View {
                 .frame(maxWidth: .infinity)
                 GlassPanel { statusFooter }
             }
-            .padding(.horizontal, 31)
-            .padding(.top, 15)
-            .padding(.bottom, 23)
+            .padding(.horizontal, 18)
+            .padding(.top, 9)
+            .padding(.bottom, 13)
         }
-        .frame(minWidth: 810, minHeight: 650)
+        .frame(minWidth: 540, minHeight: 430)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $settingsOpen) { SettingsSheet(state: state) }
         .sheet(isPresented: $addOpen) { AddCategorySheet(state: state) }
@@ -545,12 +618,12 @@ private struct MainView: View {
         ZStack {
             HStack(spacing: 10) {
                 Image(systemName: "folder.fill")
-                    .font(.system(size: 23, weight: .light))
+                    .font(.system(size: 18, weight: .light))
                     .foregroundStyle(Palette.gold)
-                    .frame(width: 39, height: 39)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 11))
+                    .frame(width: 31, height: 31)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 9))
                 Text("BKE Media Organizer")
-                    .font(.system(size: 21, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold))
                     .tracking(-0.5)
             }
             HStack {
@@ -559,30 +632,30 @@ private struct MainView: View {
                     settingsOpen = true
                 } label: {
                     Label("Settings", systemImage: "gearshape")
-                        .font(.system(size: 13, weight: .medium))
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 8)
+                        .font(.system(size: 12, weight: .medium))
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 6)
                 }
                 .buttonStyle(.plain)
                 .background(.regularMaterial, in: Capsule())
                 .overlay { Capsule().strokeBorder(.white.opacity(0.18)) }
             }
         }
-        .frame(height: 48)
-        .padding(.leading, 68) // native Mac traffic lights occupy the upper left
+        .frame(height: 36)
+        .padding(.leading, 56) // native Mac traffic lights occupy the upper left
     }
 
     private var eventForm: some View {
-        HStack(spacing: 17) {
+        HStack(spacing: 11) {
             Text("Event").foregroundStyle(.secondary)
-                .font(.system(size: 15, weight: .medium))
-                .frame(width: 67, alignment: .leading)
+                .font(.system(size: 13, weight: .medium))
+                .frame(width: 52, alignment: .leading)
             TextField("Enter event (e.g. NHLB)", text: $state.eventName)
                 .textFieldStyle(.plain)
-                .font(.system(size: 20, weight: .medium))
+                .font(.system(size: 16, weight: .medium))
                 .tint(Palette.gold)
-                .padding(.horizontal, 17)
-                .padding(.vertical, 14)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 13))
                 .overlay {
                     RoundedRectangle(cornerRadius: 13)
@@ -593,19 +666,19 @@ private struct MainView: View {
                 state.eventName = ""
             } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 18))
+                    .font(.system(size: 15))
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
             .help("Clear event")
         }
-        .padding(18)
+        .padding(11)
     }
 
     private var destinationStrip: some View {
-        HStack(spacing: 13) {
+        HStack(spacing: 9) {
             Image(systemName: "folder")
-                .font(.system(size: 18, weight: .light))
+                .font(.system(size: 15, weight: .light))
                 .foregroundStyle(Palette.gold)
             Text("Destination:")
                 .foregroundStyle(.secondary)
@@ -614,47 +687,47 @@ private struct MainView: View {
                 .truncationMode(.middle)
                 .fontWeight(.medium)
                 .help(state.destinationPreview)
-            Spacer(minLength: 14)
-            Rectangle().fill(.white.opacity(0.20)).frame(width: 1, height: 25)
+            Spacer(minLength: 8)
+            Rectangle().fill(.white.opacity(0.20)).frame(width: 1, height: 20)
             Image(systemName: "square.stack.3d.up")
                 .foregroundStyle(Palette.gold)
             Text("Move + Rename").fontWeight(.medium)
         }
-        .font(.system(size: 13))
-        .padding(.horizontal, 20)
-        .padding(.vertical, 18)
+        .font(.system(size: 12))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
     }
 
     private var statusFooter: some View {
-        HStack(spacing: 15) {
+        HStack(spacing: 10) {
             Image(systemName: state.hasError ? "exclamationmark.triangle" : "checkmark.circle")
-                .font(.system(size: 27, weight: .ultraLight))
+                .font(.system(size: 22, weight: .ultraLight))
                 .foregroundStyle(Palette.gold)
-                .frame(width: 43, height: 43)
+                .frame(width: 32, height: 32)
             VStack(alignment: .leading, spacing: 5) {
                 Text(state.status)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                 Text(state.detail)
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
-            Spacer(minLength: 10)
+            Spacer(minLength: 6)
             Button {
                 state.revealDestination()
             } label: {
                 Label("Reveal in Finder", systemImage: "folder")
-                    .font(.system(size: 12, weight: .medium))
-                    .padding(.horizontal, 13)
-                    .padding(.vertical, 10)
+                    .font(.system(size: 11, weight: .medium))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
             }
             .buttonStyle(.plain)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 11))
             .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(.white.opacity(0.17)) }
         }
-        .padding(.horizontal, 19)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 13)
+        .padding(.vertical, 10)
     }
 }
 
@@ -665,6 +738,6 @@ struct BKEMediaOrganizerApp: App {
             MainView()
         }
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 1120, height: 745)
+        .defaultSize(width: 890, height: 605)
     }
 }
