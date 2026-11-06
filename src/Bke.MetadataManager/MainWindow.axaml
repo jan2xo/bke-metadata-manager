@@ -1,0 +1,161 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Bke.MetadataManager.MainWindow"
+        Title="BKE Media Organizer"
+        Width="1160" Height="790" MinWidth="795" MinHeight="615"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="68"
+        TransparencyLevelHint="Mica,AcrylicBlur,Transparent"
+        TransparencyBackgroundFallback="#20283D"
+        Background="Transparent" Foreground="#F8F9FC" FontFamily="Inter">
+  <Window.Styles>
+    <Style Selector="Button.glass-action">
+      <Setter Property="Background" Value="#24FFFFFF"/>
+      <Setter Property="Foreground" Value="#F6F7FC"/>
+      <Setter Property="BorderBrush" Value="#39FFFFFF"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="14"/>
+      <Setter Property="Padding" Value="16,9"/>
+      <Setter Property="FontSize" Value="13"/>
+    </Style>
+    <Style Selector="Button.glass-action:pointerover">
+      <Setter Property="Background" Value="#3BFFFFFF"/>
+      <Setter Property="BorderBrush" Value="#8BA4B9D6"/>
+    </Style>
+    <Style Selector="TextBox.event-entry">
+      <Setter Property="Background" Value="#20FFFFFF"/>
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+      <Setter Property="BorderBrush" Value="#66C6D0E1"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="13"/>
+      <Setter Property="FontSize" Value="23"/>
+      <Setter Property="Padding" Value="18,13"/>
+      <Setter Property="Height" Value="61"/>
+    </Style>
+    <Style Selector="TextBox.event-entry:focus">
+      <Setter Property="BorderBrush" Value="#DDFFD78F"/>
+      <Setter Property="BorderThickness" Value="1.5"/>
+    </Style>
+  </Window.Styles>
+
+  <!-- The native desktop backdrop may be only transparent on macOS;
+       the gradients and alpha surfaces provide consistent frosted-glass styling. -->
+  <Border Margin="9" CornerRadius="26" BorderBrush="#78D6DEEF" BorderThickness="1"
+          BoxShadow="0 20 54 0 #65000000">
+    <Border.Background>
+      <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#DF495671" Offset="0"/>
+        <GradientStop Color="#EC202B45" Offset="0.43"/>
+        <GradientStop Color="#F02A324D" Offset="1"/>
+      </LinearGradientBrush>
+    </Border.Background>
+    <Grid RowDefinitions="73,*,Auto">
+      <!-- Real macOS traffic lights stay native; leave the first 90px clear. -->
+      <Grid Grid.Row="0" ColumnDefinitions="100,*,Auto" Margin="17,5,27,0">
+        <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Orientation="Horizontal" Spacing="13">
+          <Border Width="37" Height="37" Background="#39FFD69D" BorderBrush="#77FFDEAA"
+                  BorderThickness="1" CornerRadius="10">
+            <Viewbox Margin="7" Width="23" Height="23">
+              <Canvas Width="24" Height="24">
+                <Path Data="M2 8 L2 5 Q2 4 4 4 L10 4 L12 6 L20 6 Q22 6 22 8 L22 19 Q22 21 20 21 L4 21 Q2 21 2 19 Z"
+                      Stroke="#FFE0A1" Fill="#78FFD77D" StrokeThickness="1.4"/>
+              </Canvas>
+            </Viewbox>
+          </Border>
+          <TextBlock Text="BKE Media Organizer" FontSize="22" FontWeight="SemiBold"
+                     Foreground="#FFF9FC" VerticalAlignment="Center"/>
+        </StackPanel>
+        <Button Grid.Column="2" Classes="glass-action" Content="⚙  Settings"
+                Click="OpenSettings_Click" VerticalAlignment="Center"/>
+      </Grid>
+
+      <Grid Grid.Row="1" Margin="30,10,30,8"
+            RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="18">
+        <!-- Event name is the only required form input. -->
+        <Border Grid.Row="0" CornerRadius="19" Padding="24,16" BorderBrush="#40FFFFFF"
+                BorderThickness="1" Background="#25FFFFFF" BoxShadow="0 8 28 #24000000">
+          <Grid ColumnDefinitions="93,*,Auto" ColumnSpacing="13">
+            <TextBlock Grid.Column="0" Text="Event" FontSize="17" FontWeight="Medium"
+                       Foreground="#CBDEE3F0" VerticalAlignment="Center"/>
+            <TextBox Grid.Column="1" x:Name="EventBox" Classes="event-entry"
+                     TextChanged="EventBox_TextChanged" Watermark="Enter event (e.g. NHLB)"/>
+            <Button Grid.Column="2" Content="×" Classes="glass-action" Click="ClearEvent_Click"
+                    Width="42" Height="42" Padding="0" CornerRadius="21" FontSize="22"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Grid>
+        </Border>
+
+        <!-- A quiet hairline connects the event to its drop destinations. -->
+        <Border Grid.Row="1" Height="1" Background="#66F5CA7A" Margin="7,-6,7,-8"/>
+
+        <Border Grid.Row="2" CornerRadius="17" Padding="19,16" BorderBrush="#36FFFFFF"
+                BorderThickness="1" Background="#1FFFFFFF">
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="15">
+            <Viewbox Grid.Column="0" Width="25" Height="25" VerticalAlignment="Center">
+              <Canvas Width="24" Height="24">
+                <Path Data="M2 7 L2 5 Q2 4 4 4 L10 4 L12 6 L20 6 Q22 6 22 8 L22 20 L2 20 Z"
+                      Stroke="#FFD58C" Fill="#22FFD58C" StrokeThickness="1.5"/>
+              </Canvas>
+            </Viewbox>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+              <TextBlock Text="Destination:" FontSize="13" Foreground="#AEBBCF"/>
+              <TextBlock x:Name="DestinationText" Text="Choose destination in Settings"
+                         TextTrimming="CharacterEllipsis" FontSize="13" FontWeight="SemiBold"
+                         Foreground="#F9F9FF" MaxWidth="460"/>
+            </StackPanel>
+            <Border Grid.Column="2" Width="1" Height="24" Background="#66E1E7EF"
+                    VerticalAlignment="Center" Margin="4,0,4,0"/>
+            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <TextBlock Text="◇" Foreground="#FFD58C" FontSize="24" VerticalAlignment="Center"/>
+              <TextBlock Text="Rule:" Foreground="#AEBBCF" FontSize="13" VerticalAlignment="Center"/>
+              <TextBlock Text="Move + Rename" Foreground="#F5F7FC" FontWeight="SemiBold"
+                         FontSize="13" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <Grid Grid.Row="3" RowDefinitions="Auto,*" MinHeight="230">
+          <TextBlock Grid.Row="0" Text="Drop files directly into a category"
+                     Foreground="#D8DEE9" FontSize="13" Margin="4,0,0,15"/>
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled">
+            <WrapPanel x:Name="TilesPanel" Orientation="Horizontal"/>
+          </ScrollViewer>
+        </Grid>
+
+        <Grid Grid.Row="4" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="10"
+              HorizontalAlignment="Center" Margin="4,0,4,12">
+          <TextBlock Grid.Column="0" Text="ⓘ" Foreground="#E2E7F2" FontSize="16"/>
+          <TextBlock Grid.Column="1" Text="Filename example:" Foreground="#B9C2D2"
+                     FontSize="12" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="2" x:Name="FilenamePreviewText"
+                     Text="YYYY-MM-DD-C0123-EVENT-Drone.MP4" Foreground="#F5F7FE"
+                     FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+        </Grid>
+      </Grid>
+
+      <Border Grid.Row="2" Margin="27,2,27,26" CornerRadius="17" Padding="19,15"
+              BorderBrush="#42FFFFFF" BorderThickness="1" Background="#28FFFFFF">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+          <Border Grid.Column="0" Width="43" Height="43" CornerRadius="22"
+                  Background="#29FFD58C" BorderBrush="#88FFDA97" BorderThickness="1"
+                  VerticalAlignment="Center">
+            <TextBlock Text="✓" FontSize="25" Foreground="#FFE1A9"
+                       FontWeight="SemiBold" VerticalAlignment="Center"
+                       HorizontalAlignment="Center"/>
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+            <TextBlock x:Name="CounterText" Text="Ready to organize" Foreground="#FAFAFE"
+                       FontWeight="SemiBold" FontSize="16"/>
+            <TextBlock x:Name="StatusText" Text="Choose a destination in Settings, then drop footage."
+                       Foreground="#BFC7D6" FontSize="12" TextWrapping="Wrap"/>
+          </StackPanel>
+          <Button Grid.Column="2" Classes="glass-action" Content="▱  Reveal in Finder"
+                  Click="RevealDestination_Click" VerticalAlignment="Center"/>
+        </Grid>
+      </Border>
+    </Grid>
+  </Border>
+</Window>

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/Bke.MetadataManager/Bke.MetadataManager.csproj" />
+  <Project Path="tests/Bke.MetadataManager.Tests/Bke.MetadataManager.Tests.csproj" />
+</Solution>
