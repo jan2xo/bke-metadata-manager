@@ -34,8 +34,7 @@ public sealed class CaptureDateReader
                     return new CaptureDate(date, $"embedded:{directory.Name}/{tag.Name}");
             }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
-            or MetadataException or ArgumentException or NotSupportedException)
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             // Safe documented fallback. No media content is ever modified.
         }

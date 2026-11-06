@@ -73,18 +73,18 @@ public partial class MainWindow : Window
             }
         };
         DragDrop.SetAllowDrop(card, true);
-        DragDrop.AddDragEnterHandler(card, (_, e) =>
+        card.AddHandler(DragDrop.DragEnterEvent, (_, e) =>
         {
             if (CanDrop(e)) { card.Background = Hover; card.BorderBrush = Yellow; card.BorderThickness = new Thickness(2.5); }
             e.Handled = true;
         });
-        DragDrop.AddDragLeaveHandler(card, (_, e) => { ResetTile(card); e.Handled = true; });
-        DragDrop.AddDragOverHandler(card, (_, e) =>
+        card.AddHandler(DragDrop.DragLeaveEvent, (_, e) => { ResetTile(card); e.Handled = true; });
+        card.AddHandler(DragDrop.DragOverEvent, (_, e) =>
         {
             e.DragEffects = CanDrop(e) ? DragDropEffects.Move : DragDropEffects.None;
             e.Handled = true;
         });
-        DragDrop.AddDropHandler(card, (_, e) =>
+        card.AddHandler(DragDrop.DropEvent, (_, e) =>
         {
             ResetTile(card);
             e.DragEffects = CanDrop(e) ? DragDropEffects.Move : DragDropEffects.None;
