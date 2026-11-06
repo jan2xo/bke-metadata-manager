@@ -7,8 +7,6 @@ import Foundation
 // MediaOrganizer and is invoked by a small JSON bridge bundled inside the app.
 private enum Palette {
     static let gold = Color(red: 0.98, green: 0.81, blue: 0.51)
-    static let navy = Color(red: 0.08, green: 0.12, blue: 0.22)
-    static let cream = Color(red: 0.98, green: 0.98, blue: 1.0)
 }
 
 struct StoredSettings: Codable {
@@ -413,7 +411,7 @@ private struct SettingsSheet: View {
         }
         .padding(28)
         .frame(width: 470, height: 325)
-        .background(Palette.navy.opacity(0.75))
+        .background(.regularMaterial)
     }
 }
 
@@ -457,32 +455,33 @@ private struct AddCategorySheet: View {
     }
 }
 
-private struct AmbientBackdrop: View {
-    var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.25, green: 0.34, blue: 0.54),
-                        Color(red: 0.13, green: 0.19, blue: 0.35),
-                        Color(red: 0.18, green: 0.20, blue: 0.35)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                Ellipse()
-                    .fill(Color(red: 0.95, green: 0.69, blue: 0.48).opacity(0.43))
-                    .frame(width: 510, height: 400)
-                    .blur(radius: 110)
-                    .offset(x: proxy.size.width * 0.46, y: -proxy.size.height * 0.42)
-                Ellipse()
-                    .fill(Color(red: 0.48, green: 0.57, blue: 0.96).opacity(0.40))
-                    .frame(width: 530, height: 450)
-                    .blur(radius: 125)
-                    .offset(x: -proxy.size.width * 0.47, y: proxy.size.height * 0.36)
-            }
-            .ignoresSafeArea()
-        }
+// True macOS desktop-backed frost: AppKit samples pixels BEHIND the window,
+// rather than a manufactured gradient inside it. Keep the native view transparent.
+private final class DesktopGlassEffectView: NSVisualEffectView {
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard let window = window else { return }
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.hasShadow = true
+    }
+}
+
+private struct DesktopBackdrop: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = DesktopGlassEffectView()
+        // Apple explicitly documents this material + blending-mode combination
+        // for peeking through the back of a macOS window to the desktop.
+        view.material = .underWindowBackground
+        view.blendingMode = .behindWindow
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        // System Appearance/Reduce Transparency controls material rendering.
     }
 }
 
@@ -493,7 +492,8 @@ private struct MainView: View {
 
     var body: some View {
         ZStack {
-            AmbientBackdrop()
+            DesktopBackdrop()
+                .ignoresSafeArea()
             VStack(spacing: 18) {
                 header
                 GlassPanel { eventForm }

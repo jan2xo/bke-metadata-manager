@@ -1,6 +1,6 @@
 # BKE Media Organizer (working title)
 
-Standalone, offline-first desktop application. **Not Render Dock.** Cross-platform .NET 10 / Avalonia app.
+Standalone, offline-first desktop application. **Not Render Dock.** Windows/Linux: .NET 10 + Avalonia; macOS: native SwiftUI app with AppKit behind-window visual effects and the SAME verified .NET move engine.
 
 ## Workflow
 
@@ -64,18 +64,24 @@ bash scripts/package-macos.sh output dist
 ```
 
 
-## Apple-inspired glassmorphism UI
+## macOS desktop-backed glass (AppKit + SwiftUI)
 
-The main window uses a native-looking macOS title region, a translucent slate-glass backdrop,
-frosted event entry and destination/status cards, individually highlighted warm-gold drop tiles,
-an always-last `+` category tile, a live filename example, and an operational Reveal in Finder
-action. Settings uses the same glass surfaces. All controls remain real Avalonia controls;
-the illustration is **not** baked into the application.
+The Apple Silicon `.app` now uses `NSVisualEffectView` with
+`blendingMode = .behindWindow` and `material = .underWindowBackground`,
+plus `NSWindow.isOpaque = false` and `NSWindow.backgroundColor = .clear`.
+This requests **actual live macOS compositor blur of the wallpaper and apps behind the window**;
+the old fake navy/peach gradient backdrop was removed entirely.
 
-On supported Windows editions, Avalonia can request Mica/AcrylicBlur. Avalonia 11 has
-more limited macOS backdrop support; on macOS, the style is achieved with transparent,
-layered, gradient-tinted surfaces, and the OS may not provide a native blur-behind effect.
-No claim of native Apple Liquid Glass API integration is made.
+Foreground cards use lighter SwiftUI materials for material hierarchy. This isn't an image,
+CSS simulation, or bespoke gradient blur. Apple may reduce/replace transparency when
+**System Settings → Accessibility → Display → Reduce Transparency** is enabled,
+or under certain rendering/system configurations. Window translucency must be visually
+accepted with a colorful wallpaper or another window behind the app on a real Mac.
+
+macOS uses native SwiftUI fields, sheets, SF Symbols, responsive independently droppable
+tiles, a final `+` tile, and Reveal in Finder. A JSON stdin/stdout bridge calls the SAME
+tested .NET `MediaOrganizer` so verification, collision refusal, and MOVE semantics
+are not duplicated. Windows/Linux continue using Avalonia.
 
 ### Visual acceptance
 
@@ -87,3 +93,5 @@ No claim of native Apple Liquid Glass API integration is made.
 - Change the Event name; example filename and destination preview update.
 - Drop media and verify physical MOVE + rename, status counts and Reveal in Finder.
 - Preserve collision refusal and verified-source-deletion behavior.
+
+- On a Mac, move a colorful Finder window or another app BEHIND the organizer: the window should visibly blur it through the translucent background. Close the app and relaunch after changing Accessibility → Display → Reduce Transparency. This is a manual compositor test that CI cannot simulate.

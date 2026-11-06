@@ -44,6 +44,18 @@ jobs:
           dotnet-version: 10.0.x
       - name: Publish
         run: dotnet publish src/Bke.MetadataManager/Bke.MetadataManager.csproj -c Release -r ${{ matrix.rid }} --self-contained true -o output
+      - name: Verify desktop-backed glass contract
+        if: matrix.rid == 'osx-arm64'
+        shell: bash
+        run: |
+          grep -q 'view.blendingMode = .behindWindow' macos/BKEOrganizerApp.swift
+          grep -q 'view.material = .underWindowBackground' macos/BKEOrganizerApp.swift
+          grep -q 'window.backgroundColor = .clear' macos/BKEOrganizerApp.swift
+          grep -q 'window.isOpaque = false' macos/BKEOrganizerApp.swift
+          if grep -Eq 'AmbientBackdrop|LinearGradient\\(' macos/BKEOrganizerApp.swift; then
+            echo 'FAIL: simulated gradient backdrop reintroduced'
+            exit 1
+          fi
       - name: Package macOS app and disk image
         if: matrix.rid == 'osx-arm64'
         shell: bash
