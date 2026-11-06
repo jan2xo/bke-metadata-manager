@@ -45,4 +45,20 @@ dotnet test Bke.MetadataManager.slnx -c Release
 dotnet run --project src/Bke.MetadataManager/Bke.MetadataManager.csproj
 ```
 
-GitHub Actions builds/tests on Linux, Windows and macOS, and publishes self-contained Windows x64 and macOS ARM64 developer build artifacts. **These are not signed/notarized installers.** Real drag-and-drop and large transfer behavior need hands-on acceptance before shipping.
+GitHub Actions builds/tests on Linux, Windows and macOS, and publishes a self-contained Windows x64 developer build, plus a macOS Apple Silicon **BKE Media Organizer.app** in a drag-to-Applications DMG and ZIP. The macOS application is ad-hoc signed, not Apple Developer ID signed or notarized; macOS may still require first-launch approval. Real drag-and-drop and large transfer behavior need hands-on acceptance before shipping.
+
+## Install the macOS app
+
+1. Open the latest successful **Desktop MVP certification** workflow on the feature branch.
+2. Download the artifact named `BKE-Media-Organizer-macOS-ARM64`.
+3. Unzip it, double-click the `.dmg`, and drag **BKE Media Organizer.app** into **Applications**.
+4. Double-click the app to open. On first launch, macOS may show an unidentified-developer warning; after that attempt, use **System Settings → Privacy & Security → Open Anyway**.
+
+This is an actual macOS `.app` bundle with a dock icon, `Info.plist`, and executable permissions. **It is not a notarized Apple Developer ID build.** A public/staff-ready release will need Apple Developer ID signing and notarization.
+
+To package a local macOS ARM64 publish output:
+
+```sh
+dotnet publish src/Bke.MetadataManager/Bke.MetadataManager.csproj -c Release -r osx-arm64 --self-contained true -o output
+bash scripts/package-macos.sh output dist
+```

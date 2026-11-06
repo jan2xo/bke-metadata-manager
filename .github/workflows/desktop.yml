@@ -44,7 +44,22 @@ jobs:
           dotnet-version: 10.0.x
       - name: Publish
         run: dotnet publish src/Bke.MetadataManager/Bke.MetadataManager.csproj -c Release -r ${{ matrix.rid }} --self-contained true -o output
-      - uses: actions/upload-artifact@v4
+      - name: Package macOS app and disk image
+        if: matrix.rid == 'osx-arm64'
+        shell: bash
+        run: bash scripts/package-macos.sh output dist
+      - name: Upload Windows build
+        if: matrix.rid == 'win-x64'
+        uses: actions/upload-artifact@v4
         with:
-          name: media-organizer-${{ matrix.rid }}
+          name: media-organizer-win-x64
           path: output/
+      - name: Upload macOS application
+        if: matrix.rid == 'osx-arm64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: BKE-Media-Organizer-macOS-ARM64
+          if-no-files-found: error
+          path: |
+            dist/BKE-Media-Organizer-macOS-ARM64.dmg
+            dist/BKE-Media-Organizer-macOS-ARM64.zip
