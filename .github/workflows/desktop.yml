@@ -1,0 +1,50 @@
+name: Desktop MVP certification
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    name: Build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore Bke.MetadataManager.slnx
+      - name: Build
+        run: dotnet build Bke.MetadataManager.slnx -c Release --no-restore -warnaserror
+      - name: Test
+        run: dotnet test Bke.MetadataManager.slnx -c Release --no-build --logger "console;verbosity=normal"
+  publish:
+    name: Self-contained desktop build (${{ matrix.rid }})
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, rid: win-x64 }
+          - { os: macos-latest, rid: osx-arm64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Publish
+        run: dotnet publish src/Bke.MetadataManager/Bke.MetadataManager.csproj -c Release -r ${{ matrix.rid }} --self-contained true -o output
+      - uses: actions/upload-artifact@v4
+        with:
+          name: media-organizer-${{ matrix.rid }}
+          path: output/
