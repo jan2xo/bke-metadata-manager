@@ -68,7 +68,7 @@ private enum BackendBridge {
 
 // NSItemProvider calls must BEGIN inside the drop handler, not afterward.
 // The accumulator avoids concurrent writes from multiple provider completions.
-private final class DroppedURLs {
+private final class DroppedURLs: @unchecked Sendable {
     private let lock = NSLock()
     private var values: [URL] = []
     func add(_ url: URL) {

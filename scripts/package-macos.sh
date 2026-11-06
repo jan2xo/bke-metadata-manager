@@ -17,7 +17,7 @@ mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources/Backend"
 # The .NET engine is shared with Windows; the macOS front-end is truly native SwiftUI.
 ditto "$PUBLISH_DIR" "$BUNDLE/Contents/Resources/Backend"
 chmod +x "$BUNDLE/Contents/Resources/Backend/$BACKEND_EXE"
-xcrun swiftc -O -target arm64-apple-macos13.0   -sdk "$(xcrun --sdk macosx --show-sdk-path)"   -framework SwiftUI -framework AppKit -framework UniformTypeIdentifiers   macos/BKEOrganizerApp.swift -o "$BUNDLE/Contents/MacOS/$EXE"
+xcrun swiftc -parse-as-library -O -target arm64-apple-macos13.0   -sdk "$(xcrun --sdk macosx --show-sdk-path)"   -framework SwiftUI -framework AppKit -framework UniformTypeIdentifiers   macos/BKEOrganizerApp.swift -o "$BUNDLE/Contents/MacOS/$EXE"
 chmod +x "$BUNDLE/Contents/MacOS/$EXE"
 
 cat > "$BUNDLE/Contents/Info.plist" <<'PLIST'
