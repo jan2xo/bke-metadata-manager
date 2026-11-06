@@ -51,7 +51,7 @@ public partial class MainWindow : Window
         RefreshEventSummary();
     }
 
-    private void ClearEvent_Click(object? sender, RoutedEventArgs e) => EventBox.Clear();
+    private void ClearEvent_Click(object? sender, RoutedEventArgs e) => EventBox.Text = string.Empty;
 
     private void RefreshEventSummary()
     {
@@ -69,7 +69,7 @@ public partial class MainWindow : Window
         else if (string.IsNullOrWhiteSpace(eventInput) || eventDisplay == "INVALID-EVENT")
             DestinationText.Text = destination;
         else
-            DestinationText.Text = Path.Combine(destination, eventDisplay);
+            DestinationText.Text = System.IO.Path.Combine(destination, eventDisplay);
 
         if (string.IsNullOrWhiteSpace(eventInput) && _moved == 0)
             StatusText.Text = "Name an event, choose a destination, then drop footage.";
