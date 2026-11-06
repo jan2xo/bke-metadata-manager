@@ -1,0 +1,42 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Bke.MetadataManager.MainWindow" Title="BKE Media Organizer" Width="920" Height="690"
+        MinWidth="650" MinHeight="480" WindowStartupLocation="CenterScreen"
+        Background="#090909" Foreground="#F5F5F5" FontFamily="Inter">
+  <Grid Margin="32,26" RowDefinitions="Auto,Auto,Auto,*,Auto">
+    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,42">
+      <Border Grid.Column="0" Width="27" Height="27" CornerRadius="6" Background="#FFD229" Margin="0,0,12,0"/>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+        <TextBlock Text="BKE" Foreground="#FFD229" FontWeight="Black" FontSize="17"/>
+        <TextBlock Text="MEDIA ORGANIZER" Foreground="#F3F3F3" FontWeight="SemiBold" FontSize="17"/>
+        <TextBlock Text=" /  MVP" Foreground="#797979" FontSize="12" VerticalAlignment="Center"/>
+      </StackPanel>
+      <Button Grid.Column="2" Content="⚙  SETTINGS" Click="OpenSettings_Click" Background="#1A1A1A"
+              Foreground="#F2F2F2" BorderBrush="#414141" BorderThickness="1" Padding="17,9" FontWeight="SemiBold"/>
+    </Grid>
+    <StackPanel Grid.Row="1" Spacing="10">
+      <TextBlock Text="EVENT NAME" Foreground="#FFD229" FontSize="12" FontWeight="Bold"/>
+      <TextBox x:Name="EventBox" TextChanged="EventBox_TextChanged" Watermark="Enter event, e.g. NHLB"
+               FontSize="21" FontWeight="SemiBold" Height="62" Padding="17,14"
+               Background="#171717" Foreground="#FFFFFF" BorderBrush="#434343" BorderThickness="1" CornerRadius="10"/>
+    </StackPanel>
+    <Border Grid.Row="2" Background="#FFD229" Height="2" Margin="0,28,0,28"/>
+    <Grid Grid.Row="3" RowDefinitions="Auto,*">
+      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,17">
+        <TextBlock Grid.Column="0" Text="DRAG FILES DIRECTLY ONTO A CATEGORY"
+                   Foreground="#F1F1F1" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+        <TextBlock Grid.Column="1" Text="MOVE  /  RENAME" Foreground="#FFD229" FontWeight="SemiBold" FontSize="11"/>
+      </Grid>
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <WrapPanel x:Name="TilesPanel"/>
+      </ScrollViewer>
+    </Grid>
+    <Border Grid.Row="4" BorderBrush="#292929" BorderThickness="0,1,0,0" Padding="0,18,0,0">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock x:Name="StatusText" Grid.Column="0" Text="Choose a destination in Settings, then drop your footage."
+                   Foreground="#ABABAB" FontSize="12" TextWrapping="Wrap"/>
+        <TextBlock x:Name="CounterText" Grid.Column="1" Text="0 MOVED" Foreground="#FFD229"
+                   FontWeight="Bold" FontSize="12" Margin="12,0,0,0"/>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>
